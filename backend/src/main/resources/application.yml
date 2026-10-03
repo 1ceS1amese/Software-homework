@@ -1,0 +1,28 @@
+server:
+  port: 8081
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: csms-backend
+  messages:
+    encoding: UTF-8
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+csms:
+  jwt:
+    # 真实环境不得硬编码，开发环境使用随机字符串
+    secret: "CSMS_JWT_SECRET_DEFAULT_VALUE_MUST_BE_CHANGED_IN_PROD_ENVIRONMENT"
+    expiration: 7200000 # 2 hours in ms

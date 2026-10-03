@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+:root {
+  color-scheme: light;
+  --ui-primary: var(--ui-color-primary-700);
+  --ui-radius: 0.625rem;
+  --csms-canvas: #f3f6f4;
+  --csms-paper: #ffffff;
+  --csms-tint: #e8f1ef;
+  --csms-ink: #20383c;
+  --csms-muted: #5b7376;
+  --csms-line: #d6e2df;
+  --csms-accent: #0f766e;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body { overflow-x: clip; background: var(--ui-bg-muted); color: var(--ui-text); }
+button, input, select { font: inherit; }
+
+.auth-frame {
+  min-height: min(580px, calc(100dvh - 32px));
+}
+
+.auth-frame input::placeholder {
+  color: var(--csms-muted);
+  opacity: 1;
+}

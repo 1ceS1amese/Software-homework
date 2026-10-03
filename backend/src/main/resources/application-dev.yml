@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    # 主机/端口/库名均可通过环境变量覆盖，便于连接本机不同 MySQL 实例
+    # createDatabaseIfNotExist=true 让驱动在库不存在时自动创建，省去手工建库
+    url: jdbc:mysql://${CSMS_DB_HOST:localhost}:${CSMS_DB_PORT:3306}/${CSMS_DB_NAME:csms}?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+    # 账号密码一律从环境变量读取，避免明文写进仓库
+    username: ${CSMS_DB_USERNAME:root}
+    password: ${CSMS_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 3000
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+logging:
+  level:
+    com.csms: debug
+    org.springframework.web: info
+    org.springframework.security: info
