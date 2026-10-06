@@ -1,6 +1,6 @@
 # Software-homework：选课与课程管理系统
 
-基于 Spring Boot、Vue 3 + Vite + Nuxt UI 和 MySQL 8 的高校教务课程项目。项目目录名为 `UML Software`，远端仓库名为 `Software-homework`。
+基于 Spring Boot、Vue 3 + Vite + Nuxt UI 和 MySQL 8 的高校教务课程项目。
 
 学生可浏览课程、选退课、查看课表与成绩；教师可查看教学班、名单并录入成绩；管理员可查询基础数据、统计、用户和审计记录。当前仍有管理端写接口、审计自动落库等功能缺口，不能将本地运行成功等同于完整验收。
 
@@ -51,7 +51,7 @@ python3 scripts/bootstrap-linux.py
 ./scripts/dev.sh start
 ```
 
-当前项目已位于 `/home/UML Software`，日常运行可直接进入该目录执行 `start`。访问 **<http://localhost:5173/login>**；后端健康检查地址为 <http://127.0.0.1:8081/actuator/health>，必须返回 `status: UP`。
+已有代码时，在项目根目录执行 `start`。访问 **<http://localhost:5173/login>**；后端健康检查地址为 <http://127.0.0.1:8081/actuator/health>，必须返回 `status: UP`。
 
 | 用户名 | 密码 | 角色 |
 |---|---|---|
@@ -59,7 +59,7 @@ python3 scripts/bootstrap-linux.py
 | `teacher1` | `123456` | 教师 |
 | `student1` | `123456` | 学生 |
 
-演示账号只应用于本地数据。MySQL 监听 `127.0.0.1:3307`，数据保存在 `.local/mysql/data`，业务表和演示数据由 Flyway V1～V4 初始化。原 Windows 数据库数据不会自动导入（AS-16）。
+演示账号只应用于本地数据。MySQL 默认监听 `127.0.0.1:3307`，数据保存在 `.local/mysql/data`，业务表和演示数据由 Flyway V1～V4 初始化。已有外部数据库数据不会自动导入（AS-16）。
 
 ```bash
 # 项目根目录
@@ -75,7 +75,7 @@ python3 scripts/bootstrap-linux.py
 
 ## 配置
 
-无真实密钥的字段示例为 [`.env.local.example`](.env.local.example)。首次 `setup` 会生成随机数据库密码与 JWT 密钥到 `.env.local`，并设置文件权限为 `600`。该文件和 `.local/` 都不会进入 Git。
+无真实密钥的字段示例为 [`.env.local.example`](.env.local.example)。首次 `setup` 会生成随机数据库密码与 JWT 密钥到 `.env.local`，并设置文件权限为 `600`。仓库只应提交源码、依赖声明与锁文件、可复用脚本、脱敏文档和配置示例；实际 `.env*` 文件、`.local/`、依赖目录、数据库、日志、私钥和浏览器认证状态必须留在本地。
 
 脚本启动时：`.env.local` 覆盖同名 shell 变量，环境变量再覆盖后端 YAML 默认值。账号密码变更需要同步数据库账号并重启后端；不能只改文件。字段用途、是否必填、默认值、示例与重启要求见 [配置参考](docs/13-配置参考.md)。
 
@@ -89,14 +89,14 @@ source scripts/env.sh
 # 项目根目录：完整单元与模拟接口浏览器测试，不需要数据库
 ./scripts/test.sh
 
-# 项目根目录：格式空白、Shell 语法、类型与构建检查
+# 项目根目录：提交隐私、格式空白、Shell 语法、类型与构建检查
 ./scripts/check.sh
 
 # 项目根目录：项目启动后，测试真实本地后端与数据库
 ./scripts/test.sh live
 ```
 
-测试必须使用本地开发数据，不得连接生产数据库。当前套件禁止启动 Docker / Testcontainers；CI 样例不配置数据库容器，因当前凭据缺少工作流写权限而尚未启用。单个测试、直接执行 Maven / pnpm、测试数据来源和失败产物见 [测试与检查指南](docs/14-测试与检查指南.md)。
+测试必须使用本地开发数据，不得连接生产数据库。当前套件禁止启动 Docker / Testcontainers；CI 样例不配置数据库容器，尚未启用。单个测试、直接执行 Maven / pnpm、测试数据来源和失败产物见 [测试与检查指南](docs/14-测试与检查指南.md)。
 
 ## 开发状态
 

@@ -57,5 +57,37 @@ Thumbs.db
 logs/
 
 # 本地环境、凭据与进程文件
-.env.local
+.env
+.env.*
+!.env.example
+!.env.*.example
 .local/
+.m2/
+.pnpm-store/
+.npmrc
+.npmrc.*
+!.npmrc.example
+.pypirc
+.envrc
+.envrc.*
+!.envrc.example
+.netrc
+.my.cnf
+settings.local.xml
+application-local.yml
+application-local.yaml
+application-local.properties
+*.local.md
+
+# 私有证书、数据库备份与浏览器认证状态
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.dump
+*.sql.gz
+*.sql.bak
+backups/
+.auth/

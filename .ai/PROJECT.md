@@ -24,7 +24,7 @@
 | 后端 | Spring Boot 3.x + Spring Security + Validation | Spring Boot **3.2.5**、Java **17** |
 | 持久层 | MyBatis-Plus + Flyway | MyBatis-Plus **3.5.6**、Flyway（Boot BOM 管理） |
 | 鉴权 | 无状态 JWT | **JJWT 0.12.5**，签名算法由密钥长度推导，2 小时过期 |
-| 数据库 | MySQL 8.x / InnoDB / utf8mb4 | 同左（本机 MySQL 8.3，3306） |
+| 数据库 | MySQL 8.x / InnoDB / utf8mb4 | 开发实例由配置选择，工具版本以安装清单为准 |
 | 构建 | Maven（后端）、pnpm（前端） | Maven 3.9.12、pnpm 10.16.1 |
 | 测试 | JUnit5 / Testcontainers / MockMvc / Vitest / Playwright | 后端已有 JUnit5 规则与异常映射测试；前端已有 Vitest、Playwright 页面巡检与真实后端只读测试；Testcontainers / MockMvc 尚未接入 |
 
@@ -51,32 +51,26 @@
 | 远程部署授权 | **未授权**。只输出方案与配置文本（`docs/08`） |
 | 本地数据库读写 | **允许（包含创建库表结构及源码编写）** |
 | Git 远端推送 | 2026-10-06 用户已授权推送 `1ceS1amese/Software-homework`；必须先验证提交范围，不得强制推送 |
+| 上传范围 | 仅项目源码、依赖声明与锁文件、可复用脚本、脱敏文档和配置示例；真实参数、工具、数据和机器记录必须留在 Git 忽略的本地目录 |
 | 破坏性数据库操作（drop/truncate） | 禁止（需明确确认）；独立临时测试库的创建与清理按测试范围处理 |
 
-## 7. 环境实测基线（2025 本机，方案设计时读取）
+## 7. 本地信息与仓库边界
 
-| 组件 | 实测值 |
-|---|---|
-| JDK | JAVA_HOME=`D:\java-version` → Java 26；另有 `C:\Program Files\Java\jdk-17` |
-| Maven | 3.9.12 |
-| Node | v22.14.0；npm 11.4.2；pnpm 10.16.1 |
-| MySQL | MySQL83 服务 Running，监听 3306 |
-| Docker / Git / Python | 29.2.1 / 2.48.1 / 3.11.8 |
-| 端口 | 8080、5173、3000 空闲；3306 已占用 |
+仓库必须只记录项目支持的环境与可复用安装流程，不得记录使用者的机器清单、绝对路径、端口占用情况、服务名或实际凭据。本机原始记录应放在 `.local/private-notes/`；该目录必须被 Git 忽略。提交前应运行 `python3 scripts/check-privacy.py` 检查暂存快照。
 
 ## 8. 已知阻塞
 
 - Nuxt UI Vue + Vite 接入已按官方文档实装并通过构建、浏览器巡检；管理端写入接口与全校成绩分布汇总仍由后端能力限制。
 
 
-## 9. 当前 Arch WSL 本地基线（2026-10-06 实测）
+## 9. 工程验证摘要（2026-10-06）
 
 - 阶段继续为编码实现与本地验证。
 - Node 22.23.3、pnpm 10.16.1、Temurin JDK 17.0.20.1+1、Maven 3.9.12、原生 MySQL 8.0.46；下载版本与 SHA-256 见 scripts/linux-tools.json。
-- 项目路径为 `/home/UML Software`，工程内原生工具位于 `.local/tools`；引导器已在独立空工具目录验证。
-- 前端 5173、后端 8081、数据库 3307，只监听本机回环地址；未配置开机自启。
-- 独立开发数据保存在 `.local/mysql/data`，由 Flyway 初始化演示数据；不自动迁入 Windows 原库。
-- 用户要求测试不启动 Docker，当前统一测试入口与 CI 样例均不启动 Docker；此前准备的本地 Docker 实例和服务已停止。
-- CI 配置样例位于 `.github/ci.example.yml`，由于 Git 凭据缺少 `workflow` 权限且已连接 GitHub 工具拒绝写入，尚未启用。
+- 工程内原生工具默认位于 `.local/tools`；引导器已在独立空工具目录验证。机器安装路径不得入库。
+- 脚本默认前端 5173、后端 8081、数据库 3307，只监听本机回环地址；未配置开机自启。
+- 独立开发数据默认保存在 `.local/mysql/data`，由 Flyway 初始化演示数据；不自动迁入已有外部数据库。
+- 用户要求测试不启动 Docker，当前统一测试入口与 CI 样例均不启动 Docker。
+- CI 配置样例位于 `.github/ci.example.yml`，尚未启用；启用需要工作流写入权限。
 - 本地配置 `.env.local` 权限 600，随机数据库密码与 JWT 密钥不进入 Git。
 - 用户已授权推送 `https://github.com/1ceS1amese/Software-homework.git`；远程部署与付费模型调用仍未授权。
