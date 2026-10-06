@@ -1,157 +1,57 @@
-# 选课与课程管理系统（CSMS）
+# Software-homework：选课与课程管理系统
 
-> Course Selection and Management System —— 基于 Spring Boot + Vue 3 的高校课程管理系统
+基于 Spring Boot、Vue 3 + Vite + Nuxt UI 和 MySQL 8 的高校教务课程项目。项目目录名为 `UML Software`，远端仓库名为 `Software-homework`。
 
-一套面向高校教务场景的 Web 系统，覆盖 **开课 → 选课 → 成绩** 全链路，服务学生、教师、管理员三类角色。
+学生可浏览课程、选退课、查看课表与成绩；教师可查看教学班、名单并录入成绩；管理员可查询基础数据、统计、用户和审计记录。当前仍有管理端写接口、审计自动落库等功能缺口，不能将本地运行成功等同于完整验收。
 
----
+## 目录
 
-## 功能特性
+- [环境](#环境)
+- [安装与启动](#安装与启动)
+- [配置](#配置)
+- [测试与检查](#测试与检查)
+- [开发状态](#开发状态)
+- [文档](#文档)
+- [贡献与问题报告](#贡献与问题报告)
+- [许可证](#许可证)
 
-| 角色 | 功能 |
+## 环境
+
+已验证环境为 Arch WSL / Linux x86_64（glibc 2.42+）。必须使用 Linux 原生工具；Windows 的旧依赖目录不应直接复用。
+
+| 依赖 | 本地基线与声明 |
 |---|---|
-| **学生** | 浏览与筛选教学班、在线选课 / 退课、周视图课表、成绩查询、学分统计 |
-| **教师** | 我的教学班、选课名单（可导出）、成绩录入与发布 |
-| **管理员** | 用户管理、院系 / 专业 / 学期 / 课程 / 教学班管理、统计报表、操作审计、系统参数 |
+| JDK | Java 17；引导器固定 Temurin 17.0.20.1+1 |
+| Maven | 3.9.12；后端附 Maven Wrapper |
+| Node.js | 22.12+；引导器固定 22.23.3 LTS |
+| pnpm | 10.16.1；`frontend/package.json` 的 `packageManager` |
+| MySQL | 原生 MySQL 8.0；引导器固定 8.0.46 |
+| 前端依赖 | `frontend/package.json` + `pnpm-lock.yaml` |
+| 后端依赖 | `backend/pom.xml`，以 registry 实际解析为准 |
+| 浏览器测试 | Playwright 自带 Chromium，首次需要下载浏览器 |
 
-**系统设计上的三个重点：**
+原生工具下载地址与 SHA-256 锁定在 `scripts/linux-tools.json`。引导器把工具和运行库安装到被 Git 忽略的 `.local/tools`，不升级系统级 Java/Node。其他系统的准备方式与基础命令要求见 [本地开发指南](docs/12-本地开发指南.md)。
 
-- **选课不超卖** —— 容量判定与自增在同一条原子 SQL 中完成，由数据库行锁保证，杜绝并发下的名额超发。
-- **选课规则可解释** —— 重复选课、上课时间冲突、先修课未修读、学分超限，每一条被拒绝都能给出明确原因而非一个 500。
-- **操作可追溯** —— 选退课、成绩发布与解锁、基础数据变更全部留痕（操作人、时间、前后值、IP）。
+## 安装与启动
 
----
-
-## 技术栈
-
-| 层 | 技术 |
-|---|---|
-| 前端 | Vue 3.5（`<script setup>` + TypeScript 6）、Vite 8、Nuxt UI 4、Vue Router 5、Pinia 4、Axios 1.20、Tailwind CSS 4 |
-| 后端 | Spring Boot 3.2.5、Spring Security、MyBatis-Plus 3.5.6、JJWT 0.12.5、Flyway、Java 17 |
-| 数据库 | MySQL 8（InnoDB / utf8mb4） |
-
----
-
-## 系统架构
-
-```
-浏览器 ──HTTPS/JSON──▶ Nginx ─┬──▶ Vue 3 SPA（静态资源）
-                             └──▶ Spring Boot ──JDBC──▶ MySQL 8
-                                          └──▶ Flyway 迁移 + 审计日志
-```
-
-后端按 **接入层 → 应用层 → 领域层 → 数据层** 四层组织，包级划分为
-`auth` `user` `base` `classroom` `enroll` `grade` `stat` `audit` `security` `common` 十个模块。
-
-统一响应体：`{ code, message, data, traceId }`，其中 `code = 0` 表示成功。
-
----
-
-## 目录结构
-
-```
-.
-├── backend/                     Spring Boot 工程
-│   ├── pom.xml
-│   ├── build.bat                Windows 快速编译脚本
-│   └── src/main/
-│       ├── java/com/csms/       按业务模块划分的包
-│       └── resources/
-│           ├── application.yml / application-dev.yml
-│           └── db/migration/    Flyway 迁移脚本
-│
-├── frontend/                    Vue 3 工程
-│   └── src/
-│       ├── api/                 按模块封装的接口调用 + 类型定义
-│       ├── router/              路由表与全局守卫
-│       ├── stores/              Pinia 状态
-│       ├── layouts/             三种布局：登录 / 默认 / 管理台
-│       ├── components/          通用组件
-│       ├── directives/          权限指令
-│       └── views/               页面（按角色分目录）
-│
-├── start-dev-db.bat              启动本地开发数据库（可选，见下）
-├── docs/                        设计文档（需求、架构、数据库、接口、测试、部署）
-└── .ai/                         项目过程文档
-```
-
----
-
-## 快速开始
-
-### 环境要求
-
-| 依赖 | 版本 |
-|---|---|
-| JDK | **17 或更高** |
-| Maven | 3.9+ |
-| Node.js | 20+ |
-| pnpm | 9+ |
-| MySQL | 8.x（已启动，能连上即可） |
-
-> 工程已固定 `Lombok 1.18.46`，在 **JDK 17 与 JDK 26 上均实测编译通过**，无需手动切换 `JAVA_HOME`。
-> 若你的 JDK 过旧（< 17）仍会失败，请升级 JDK。
-
-### 1. 准备数据库
-
-数据库 `csms` **不需要手工创建** —— JDBC 连接串已带 `createDatabaseIfNotExist=true`，首次启动时驱动自动建库，随后 Flyway 依次执行四个迁移脚本建表并写入演示数据。
-
-你只需要一个可用的 MySQL 实例。二选一：
-
-**A. 用你已有的 MySQL**（若你知道 root 密码）
-无需额外操作，直接把端口与密码填进下一步的环境变量即可。
-
-**B. 用独立的开发实例**（不知道现有密码时）
-仓库提供 `start-dev-db.bat`：用你机器上已有的 MySQL 二进制，在独立数据目录启动一个 3307 端口实例，**不影响原有 MySQL 服务与数据**。
-
-首次使用需初始化数据目录：
+以下流程使用原生 MySQL，无需启动 Docker。
 
 ```bash
-"D:\MYSQL Server\bin\mysqld.exe" --initialize-insecure ^
-  --basedir="D:\MYSQL Server" ^
-  --datadir="D:\code\homework\.csms-devdb\data"
+# 希望保存项目的父目录
+git clone https://github.com/1ceS1amese/Software-homework.git "UML Software"
+cd "UML Software"
+
+# 项目根目录：下载并校验固定版本的 Linux 工具
+python3 scripts/bootstrap-linux.py
+
+# 项目根目录：生成配置、初始化本地库、安装依赖、测试与打包后端
+./scripts/dev.sh setup
+
+# 项目根目录：启动原生数据库、后端与前端
+./scripts/dev.sh start
 ```
 
-之后每次启动开发库只需运行 `start-dev-db.bat`（关闭窗口即停止）。
-
-### 2. 配置数据库连接
-
-地址与账号密码通过**环境变量**注入，不会写进仓库：
-
-| 环境变量 | 默认值 | 说明 |
-|---|---|---|
-| `CSMS_DB_HOST` | `localhost` | 数据库主机 |
-| `CSMS_DB_PORT` | `3306` | 端口（用开发实例时填 `3307`） |
-| `CSMS_DB_NAME` | `csms` | 库名 |
-| `CSMS_DB_USERNAME` | `root` | 账号 |
-| `CSMS_DB_PASSWORD` | 空 | 密码 |
-
-### 3. 启动后端（端口 8081）
-
-**方式一（推荐）**：运行 `backend/run.bat`，按提示输入密码即可。
-
-**方式二**：手动设置环境变量
-
-```powershell
-cd backend
-$env:CSMS_DB_PORT="3307"        # 使用开发实例时
-$env:CSMS_DB_PASSWORD="你的密码"
-mvn spring-boot:run
-```
-
-**仅编译**（不启动）：`backend/build.bat` 或 `mvn clean compile`。
-
-### 4. 启动前端（端口 5173）
-
-```bash
-cd frontend
-pnpm install
-pnpm dev
-```
-
-访问 <http://localhost:5173>。开发服务器已将 `/api` 请求代理到 `http://localhost:8081`，无需处理跨域。
-
-### 默认演示账号
+当前项目已位于 `/home/UML Software`，日常运行可直接进入该目录执行 `start`。访问 **<http://localhost:5173/login>**；后端健康检查地址为 <http://127.0.0.1:8081/actuator/health>，必须返回 `status: UP`。
 
 | 用户名 | 密码 | 角色 |
 |---|---|---|
@@ -159,93 +59,81 @@ pnpm dev
 | `teacher1` | `123456` | 教师 |
 | `student1` | `123456` | 学生 |
 
-> 演示账号仅用于本地开发，部署前请务必修改密码。
+演示账号只应用于本地数据。MySQL 监听 `127.0.0.1:3307`，数据保存在 `.local/mysql/data`，业务表和演示数据由 Flyway V1～V4 初始化。原 Windows 数据库数据不会自动导入（AS-16）。
 
----
+```bash
+# 项目根目录
+./scripts/dev.sh status
+./scripts/dev.sh logs
+./scripts/dev.sh stop       # 保留数据库数据
+./scripts/dev.sh start      # 手动再次启动
+```
 
-## 常用命令
+后端源码修改后必须重新 `setup` 打包，再 `restart`。未配置开机自启。日志位置与端口占用、配置缺失、数据库未就绪、版本不匹配等处理见 [开发指南排错](docs/12-本地开发指南.md#6-排错)。
 
-| 目录 | 命令 | 说明 |
-|---|---|---|
-| `backend/` | `mvn clean compile` | 编译 |
-| `backend/` | `mvn spring-boot:run` | 启动（8081） |
-| `backend/` | `mvn clean package` | 打包 |
-| `frontend/` | `pnpm dev` | 开发服务器（5173） |
-| `frontend/` | `pnpm build` | 生产构建 + 类型检查 |
-| `frontend/` | `pnpm test` | Vitest 单元测试 |
-| `frontend/` | `pnpm test:e2e` | Playwright 浏览器测试（使用测试接口桩，需本机 Edge，无需后端） |
-| `frontend/` | `pnpm test:e2e:live` | 连接已启动的本地后端与开发库，执行三角色只读链路测试 |
-| `frontend/` | `pnpm preview` | 预览生产构建产物 |
+这里的 Vite 开发服务器只用于本地开发；生产运行应使用构建产物、正式数据库、TLS 与独立配置，详见 [部署与运维设计](docs/08-部署与运维设计.md)。当前未授权、未执行远程部署。
 
----
+## 配置
 
-## 文档
+无真实密钥的字段示例为 [`.env.local.example`](.env.local.example)。首次 `setup` 会生成随机数据库密码与 JWT 密钥到 `.env.local`，并设置文件权限为 `600`。该文件和 `.local/` 都不会进入 Git。
 
-| 文档 | 内容 |
-|---|---|
-| [需求规格说明](docs/00-需求规格说明.md) | 角色权限矩阵、功能需求、业务规则 BR-01~BR-16、范围边界 |
-| [系统总体架构设计](docs/01-系统总体架构设计.md) | 分层架构、技术选型、工程目录、架构决策记录 |
-| [数据库设计](docs/02-数据库设计.md) | ER 图、15 张表定义、索引、枚举、并发与事务方案 |
-| [后端模块设计](docs/03-后端模块设计.md) | 模块职责、核心流程时序、状态机、异常体系 |
-| [前端设计](docs/04-前端设计.md) | 路由表、页面设计、状态管理、权限控制 |
-| [接口设计与 API 清单](docs/05-接口设计与API清单.md) | 统一响应、鉴权、接口清单、错误码表 |
-| [非功能与安全设计](docs/06-非功能与安全设计.md) | 性能预算、安全基线、审计、可观测性 |
-| [测试方案](docs/07-测试方案.md) | 测试分层、用例集、并发选课专项 |
-| [部署与运维设计](docs/08-部署与运维设计.md) | 环境规划、容器编排、发布与回滚 |
-| [实施计划与里程碑](docs/09-实施计划与里程碑.md) | 阶段划分与交付顺序 |
-| [验收标准](docs/10-验收标准.md) | 验收项与状态 |
-| [风险与假设登记表](docs/11-风险与假设登记表.md) | 假设、风险与回退方案 |
+脚本启动时：`.env.local` 覆盖同名 shell 变量，环境变量再覆盖后端 YAML 默认值。账号密码变更需要同步数据库账号并重启后端；不能只改文件。字段用途、是否必填、默认值、示例与重启要求见 [配置参考](docs/13-配置参考.md)。
 
----
+## 测试与检查
+
+```bash
+# 项目根目录：首次准备浏览器
+source scripts/env.sh
+(cd frontend && pnpm exec playwright install chromium)
+
+# 项目根目录：完整单元与模拟接口浏览器测试，不需要数据库
+./scripts/test.sh
+
+# 项目根目录：格式空白、Shell 语法、类型与构建检查
+./scripts/check.sh
+
+# 项目根目录：项目启动后，测试真实本地后端与数据库
+./scripts/test.sh live
+```
+
+测试必须使用本地开发数据，不得连接生产数据库。当前套件禁止启动 Docker / Testcontainers；CI 样例不配置数据库容器，因当前凭据缺少工作流写权限而尚未启用。单个测试、直接执行 Maven / pnpm、测试数据来源和失败产物见 [测试与检查指南](docs/14-测试与检查指南.md)。
 
 ## 开发状态
 
-> **核心业务链路已跑通（M3 纵向切片完成），管理端与统计为只读实现。**
+已实现真实 JWT 登录、角色数据隔离、课程与教学班查询、选退课规则、成绩暂存与发布、管理员解锁、真实统计、用户查询与启停。当前运行页面使用 Nuxt UI，旧版未路由的 Element Plus 源码仍保留。
 
-### 已实现并实测通过
+尚未完成：部分管理端增删改、教学班状态流转 HTTP 入口、审计自动落库、成绩批量导入、生产配置，以及并发选课 / 成绩写入的可重复自动化集成测试。完整范围和进展必须以设计契约与 `.ai/` 记录为准。
 
-| 模块 | 能力 |
+## 文档
+
+| 文档 | 用途 |
 |---|---|
-| 认证 | 真实登录（BCrypt 校验 + JWT 签发）、当前用户、改密、按钮级权限码、连续 5 次失败锁定账号 |
-| 选课 | 选课 / 退课 / 重选 / 我的选课 / 我的课表 / 选课预检 / 教学班名单 |
-| 选课规则 | 重复选课、时间冲突（含周次区间）、先修课、学分上限，**每条都返回可读中文原因** |
-| 并发安全 | 单条原子 SQL 控制容量，**20 线程抢 1 个名额实测 1 成功 / 19 拒绝，零超卖** |
-| 成绩 | 批量暂存、服务端按配置权重算总评与绩点、发布（单向锁）、管理员解锁（需填原因并计数） |
-| 教学班 | 列表分页筛选（学期 / 课程 / 教师 / 关键词 / 仅看有余量）、详情、教师工作台 |
-| 基础数据 | 院系、专业、学期、课程、系统参数查询；系统参数修改 |
-| 统计 | 选课总览、按课程聚合、满员度分析、学生学分与 GPA 汇总（全部实时聚合，无假数据） |
-| 用户与审计 | 用户列表 / 详情 / 启停 / 统计，操作审计日志与登录日志检索 |
-| 权限隔离 | 学生访问管理端接口返回 `10002`，无 Token 返回 `401` |
+| [00 需求规格说明](docs/00-需求规格说明.md) | 角色、功能、BR 规则与范围 |
+| [01 系统总体架构设计](docs/01-系统总体架构设计.md) | 分层、模块与技术选型 |
+| [02 数据库设计](docs/02-数据库设计.md) | 表名、字段、枚举的唯一契约 |
+| [03 后端模块设计](docs/03-后端模块设计.md) | 业务实现与事务 |
+| [04 前端设计](docs/04-前端设计.md) | 页面、路由、组件与权限 |
+| [05 接口设计与 API 清单](docs/05-接口设计与API清单.md) | 接口与错误码的唯一契约 |
+| [06 非功能与安全设计](docs/06-非功能与安全设计.md) | 性能与安全目标 |
+| [07 测试方案](docs/07-测试方案.md) | 业务规则与用例映射 |
+| [08 部署与运维设计](docs/08-部署与运维设计.md) | 生产方案，未执行部署 |
+| [09 实施计划与里程碑](docs/09-实施计划与里程碑.md) | 实施顺序 |
+| [10 验收标准](docs/10-验收标准.md) | 验收门槛 |
+| [11 风险与假设登记表](docs/11-风险与假设登记表.md) | 假设、风险与回退 |
+| [12 本地开发指南](docs/12-本地开发指南.md) | 系统、安装、运行与排错 |
+| [13 配置参考](docs/13-配置参考.md) | 字段、优先级与敏感配置 |
+| [14 测试与检查指南](docs/14-测试与检查指南.md) | 完整 / 单个测试、检查与 CI |
 
-### 尚未实现
+验证记录位于 `docs/evidence/`，交接状态见 [`.ai/HANDOFF.md`](.ai/HANDOFF.md)。
 
-| 项 | 说明 |
-|---|---|
-| 管理端写操作 | 院系 / 专业 / 学期 / 课程 / 教学班的增删改接口（前端对应按钮也尚未接线） |
-| 教学班状态流转接口 | `TeachingClassStateMachine` 已实现但未暴露 HTTP 入口 |
-| 审计切面 | 审计表可查，但写操作尚未自动落审计（当前只有种子数据） |
-| 成绩批量导入 | CSV 导入（P2） |
-| 测试覆盖缺口 | 已有后端 JUnit 规则与异常映射测试、前端 Vitest / Playwright 测试，以及连接真实数据库的只读浏览器测试；并发与成绩写入流程尚未纳入可重复运行的自动化集成测试 |
-| 部署配置 | 无 Dockerfile / Compose / 生产 profile |
+## 贡献与问题报告
 
-### 已知限制
+修改前必须阅读 `AGENTS.md` 与契约；提交前必须运行检查，并说明实际测试结果与边界。分支、PR、问题报告与发布约定见 [CONTRIBUTING.md](CONTRIBUTING.md)，仓库提供 PR 与问题模板。
 
-- 当前路由中的页面已移除硬编码数据回退，接口失败会显示错误或空态；仓库中未接入路由的旧版页面仍保留待清理。
-- 统计页已接入 `capacity-analysis`；全校成绩分布因后端缺少汇总接口，明确显示暂不可用。
-- 成绩录入页从 `sys_config` 读取权重，最终总评始终以服务端计算为准。
-- 管理端院系、专业、学期、课程、教学班写入接口尚未实现，因此相应页面只展示实际可用的查询能力。
+尚未开始持续发版，因此暂不引入没有实际发布对应的版本承诺或变更记录。开始发版时应补版本规则、升级与数据迁移说明。
 
-具体进展见 [`.ai/TASKS.md`](.ai/TASKS.md) 与 [`.ai/HANDOFF.md`](.ai/HANDOFF.md)。
-
----
-
-## 贡献
-
-1. 从 `main` 切出特性分支：`git checkout -b feature/xxx`
-2. 变更数据表 / 接口时，**必须同步更新 `docs/` 中对应文档**（它们是契约的唯一出处）
-3. 提交前确保 `backend` 编译通过、`frontend` 的 `pnpm build` 通过
-4. 合并请求需说明变更范围与验证方式
+README 组织参考 [Standard Readme 中文规范](https://github.com/RichardLitt/standard-readme/blob/main/spec.zh-CN.md)，按本项目的应用与教学场景调整。
 
 ## 许可证
 
-本项目仅用于课程学习与教学演示。
+当前保留课程学习与教学演示用途，未授予通用开源许可。详见 [LICENSE](LICENSE)；第三方依赖适用各自许可证。

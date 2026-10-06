@@ -24,5 +24,5 @@ mybatis-plus:
 csms:
   jwt:
     # 真实环境不得硬编码，开发环境使用随机字符串
-    secret: "CSMS_JWT_SECRET_DEFAULT_VALUE_MUST_BE_CHANGED_IN_PROD_ENVIRONMENT"
+    secret: ${CSMS_JWT_SECRET:CSMS_JWT_SECRET_DEFAULT_VALUE_MUST_BE_CHANGED_IN_PROD_ENVIRONMENT}
     expiration: 7200000 # 2 hours in ms

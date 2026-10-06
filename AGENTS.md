@@ -4,7 +4,7 @@
 
 ## 1. 项目一句话定义
 
-基于 Spring Boot 的选课与课程管理系统（前端 Vue 3 + Element Plus，后端 Spring Boot + Java 17，数据库 MySQL 8）。
+基于 Spring Boot 的选课与课程管理系统（前端 Vue 3 + Vite + Nuxt UI，后端 Spring Boot + Java 17，数据库 MySQL 8）。
 
 ## 2. 当前阶段（务必先确认，再动手）
 

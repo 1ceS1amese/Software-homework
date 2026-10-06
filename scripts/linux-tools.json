@@ -1,0 +1,114 @@
+{
+  "platform": "Arch Linux x86_64, glibc >= 2.42",
+  "pnpm": "10.16.1",
+  "artifacts": [
+    {
+      "kind": "tool",
+      "file": "node-v22.23.3-linux-x64.tar.xz",
+      "url": "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.xz",
+      "sha256": "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de"
+    },
+    {
+      "kind": "tool",
+      "file": "OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz",
+      "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz",
+      "sha256": "3808d1d15e3ec6bd5b84057fb5d84c33d8a1536a258146bcea2e603fc726e08e"
+    },
+    {
+      "kind": "tool",
+      "file": "apache-maven-3.9.12-bin.tar.gz",
+      "url": "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.tar.gz",
+      "sha256": "fa2c9948729296c23afd18fd01a90f62cdda09a46191b54a8bc3764c2eee812e"
+    },
+    {
+      "kind": "tool",
+      "file": "mysql-8.0.46-linux-glibc2.17-x86_64-minimal.tar.xz",
+      "url": "https://cdn.mysql.com/Downloads/MySQL-8.0/mysql-8.0.46-linux-glibc2.17-x86_64-minimal.tar.xz",
+      "sha256": "e2777d490fcaadc5a4be06db89b6935c78909bd9c3382af859ab284af0c950b0"
+    },
+    {
+      "kind": "library",
+      "file": "nss-3.124-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/n/nss/nss-3.124-1-x86_64.pkg.tar.zst",
+      "sha256": "fd0d2ddd0f120bd83defd001964e6cc2d19e2b78518cc8793101c89786b955e6"
+    },
+    {
+      "kind": "library",
+      "file": "nspr-4.39-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/n/nspr/nspr-4.39-1-x86_64.pkg.tar.zst",
+      "sha256": "c4bb8ee7de809667ad270b4bfb446b572b129d696c5a8ce76a83a5ad23078ada"
+    },
+    {
+      "kind": "library",
+      "file": "alsa-lib-1.2.14-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/a/alsa-lib/alsa-lib-1.2.14-1-x86_64.pkg.tar.zst",
+      "sha256": "e3e237147058b1deb44d9f2e23303b8ec4249d0537bbad5b143b946698bcb827"
+    },
+    {
+      "kind": "library",
+      "file": "at-spi2-core-2.60.4-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/a/at-spi2-core/at-spi2-core-2.60.4-1-x86_64.pkg.tar.zst",
+      "sha256": "386a4b99e09905e0ce83528ba6c8cbf1e265d1749015aaa3f0ba10b36f4ce32b"
+    },
+    {
+      "kind": "library",
+      "file": "libxcomposite-0.4.7-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/l/libxcomposite/libxcomposite-0.4.7-1-x86_64.pkg.tar.zst",
+      "sha256": "5d11e648ccccbd7cf19884a677441528d8546eb89a4fda57febb08446e619917"
+    },
+    {
+      "kind": "library",
+      "file": "libxdamage-1.1.7-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/l/libxdamage/libxdamage-1.1.7-1-x86_64.pkg.tar.zst",
+      "sha256": "36be52372da7f2f49f949fc8a0f3c6e4eaee6fb03761d67e17355bd15ea6cee6"
+    },
+    {
+      "kind": "library",
+      "file": "libxrandr-1.5.5-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/l/libxrandr/libxrandr-1.5.5-1-x86_64.pkg.tar.zst",
+      "sha256": "49d3a3596311477f8ad2e1735dae612013118802822f21ce22886f65103dd899"
+    },
+    {
+      "kind": "library",
+      "file": "libxkbcommon-1.13.2-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/l/libxkbcommon/libxkbcommon-1.13.2-1-x86_64.pkg.tar.zst",
+      "sha256": "18d8dc90958eda2edaab9b671ee96c2c1f2b1a322618eca97c7c04605d738581"
+    },
+    {
+      "kind": "library",
+      "file": "libxtst-1.2.5-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/l/libxtst/libxtst-1.2.5-1-x86_64.pkg.tar.zst",
+      "sha256": "7e036fc4ae02ec16d09efed08b111e33d4753aa959d12148461d653659a9f529"
+    },
+    {
+      "kind": "library",
+      "file": "libxi-1.8.3-1-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/l/libxi/libxi-1.8.3-1-x86_64.pkg.tar.zst",
+      "sha256": "5ac5541f58978a3a5fab08c24f03da43200a7e9b25098e3e6da7bad7a0892cf0"
+    },
+    {
+      "kind": "library",
+      "file": "libaio-0.3.113-4-x86_64.pkg.tar.zst",
+      "url": "https://archive.archlinux.org/packages/l/libaio/libaio-0.3.113-4-x86_64.pkg.tar.zst",
+      "sha256": "e0356b27738a8f7e27339b0f3ab50b88d6a242a3519b948e41bb0f8fd79c01ed"
+    },
+    {
+      "kind": "deb-library",
+      "file": "libncurses5_6.1-1ubuntu1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/n/ncurses/libncurses5_6.1-1ubuntu1_amd64.deb",
+      "sha256": "b69ad5d86af94dd5efdc9e8ba4cb48713fdc5ad1b9824a82318aa189e3eeb7cd"
+    },
+    {
+      "kind": "deb-library",
+      "file": "libtinfo5_6.1-1ubuntu1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/n/ncurses/libtinfo5_6.1-1ubuntu1_amd64.deb",
+      "sha256": "450bf945387029bee91d8eea76deacb8df907a1f6641fbce388933d1fdfb5a0d"
+    },
+    {
+      "kind": "font",
+      "file": "NotoSansSC.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/2894aab31764f10f29c421bdfd2340d3b382d384/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+      "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da"
+    }
+  ]
+}

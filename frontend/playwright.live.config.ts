@@ -2,11 +2,12 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/live',
+  outputDir: './test-results/live',
   timeout: 60_000,
   use: {
     baseURL: 'http://127.0.0.1:5173',
     browserName: 'chromium',
-    channel: 'msedge',
+    channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
     headless: true,
   },
   webServer: {

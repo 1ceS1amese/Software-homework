@@ -56,3 +56,6 @@ Thumbs.db
 *.log
 logs/
 
+# 本地环境、凭据与进程文件
+.env.local
+.local/
