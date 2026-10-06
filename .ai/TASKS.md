@@ -91,6 +91,6 @@
 | ENV-02 | 本地启动、停止、再次启动并保留数据 | scripts/dev.sh；5173 / 8081 / 3307 与健康检查通过 | [x] |
 | ENV-03 | 后端、前端、真实本地数据库验证 | JUnit 6、Vitest 3、模拟 E2E 12、live 3 与数据库一致性检查通过 | [x] |
 | ENV-04 | 文档、配置、检查、贡献与 CI 样例基线 | README、CONTRIBUTING、LICENSE、docs/12～14、.github（CI 样例未启用）、scripts/check.sh/test.sh | [x] |
-| ENV-05 | 推送指定 GitHub 仓库 | 用户已授权；提交前须核对契约与凭据排除 | [~] |
+| ENV-05 | 推送指定 GitHub 仓库 | main 已推送：dae2bf2；已核对契约与凭据排除；CI 以样例提供 | [x] |
 
 本轮仅处理本地环境与工程基线，管理端写接口、审计切面、并发与成绩写入自动化覆盖等原有未完成项继续保留。
