@@ -104,5 +104,5 @@
 | GIT-02 | 课程查询与已选课程状态防止过期响应覆盖 | CourseSelectionView、enroll store；单元 5 项、课程竞态 E2E 1 项通过 | [x] |
 | GIT-03 | 学生成绩随学期刷新与关键词 / 通过结果筛选 | MyGradesView、CreditSummaryView；2 项实际浏览器测试通过 | [x] |
 | GIT-04 | 教师花名册快速检索与可靠导出 | ClassRosterView、rosterCsv；CSV 单元 4 项、实际下载 E2E 1 项通过 | [x] |
-| GIT-05 | 错误提交、revert 回滚、合并与正常推送 | 可查提交图与回滚证据 | [ ] |
-| GIT-06 | 操作指南及文件 / 分支 / 完整历史同步验收 | docs/15、docs/evidence/git-practice-20261009.md | [ ] |
+| GIT-05 | 错误提交、revert 回滚、合并与正常推送 | 03679c7 → 75440c4；12e79b2 已合并推送，正确树逐字恢复 | [x] |
+| GIT-06 | 操作指南及文件 / 分支 / 完整历史同步验收 | docs/15、实践证据；合并快照镜像核验通过，说明收尾后按指南复验 | [x] |
