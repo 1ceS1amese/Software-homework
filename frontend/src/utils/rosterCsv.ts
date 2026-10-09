@@ -4,7 +4,7 @@ export function csvCell(value: unknown): string {
   let text = String(value ?? '')
   // 电子表格应将用户提供的公式前缀视为文本。
   if (/^\s*[=+\-@]/u.test(text)) text = "'" + text
-  return '"' + text.replaceAll('"', '') + '"'
+  return '"' + text.replaceAll('"', '""') + '"'
 }
 
 export function buildRosterCsv(students: EnrollmentItem[]): string {
