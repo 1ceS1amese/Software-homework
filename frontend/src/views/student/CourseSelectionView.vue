@@ -45,8 +45,8 @@
             <template #actions-cell="{ row }">
               <div class="flex flex-wrap gap-2">
                 <UButton size="sm" color="neutral" variant="ghost" @click="detailClass = row.original">详情</UButton>
-                <UButton v-if="isEnrolled(row.original.id)" size="sm" color="error" variant="outline" :disabled="!!enrollmentError || !termStore.isWithdrawAllowedNow" :loading="actionLoading === row.original.id" @click="requestAction(row.original, 'withdraw')">退课</UButton>
-                <UButton v-else size="sm" :disabled="!!enrollmentError || !remaining(row.original) || enrollStore.hasTimeConflict(row.original) || !termStore.isEnrollingNow" :loading="actionLoading === row.original.id" @click="requestAction(row.original, 'enroll')">选课</UButton>
+                <UButton v-if="isEnrolled(row.original.id)" size="sm" color="error" variant="outline" :disabled="loading || !!enrollmentError || !termStore.isWithdrawAllowedNow" :loading="actionLoading === row.original.id" @click="requestAction(row.original, 'withdraw')">退课</UButton>
+                <UButton v-else size="sm" :disabled="loading || !!enrollmentError || !remaining(row.original) || enrollStore.hasTimeConflict(row.original) || !termStore.isEnrollingNow" :loading="actionLoading === row.original.id" @click="requestAction(row.original, 'enroll')">选课</UButton>
               </div>
             </template>
           </UTable>
@@ -115,6 +115,7 @@ const actionLoading = ref<number | null>(null)
 const page = ref(1)
 const pageSize = 10
 const total = ref(0)
+let latestClassRequest = 0
 const detailClass = ref<TeachingClassItem | null>(null)
 const detailOpen = computed({ get: () => detailClass.value !== null, set: open => { if (!open) detailClass.value = null } })
 const pendingClass = ref<TeachingClassItem | null>(null)
@@ -130,17 +131,20 @@ function resetFilters() { filters.keyword = ''; filters.onlyAvailable = false; s
 function changePage(next: number) { page.value = next; void loadClasses() }
 
 async function loadClasses() {
+  const requestId = ++latestClassRequest
   loading.value = true
   error.value = ''
   try {
     const result = await getTeachingClasses({ termId: termStore.currentTermId ?? undefined, keyword: filters.keyword.trim() || undefined, status: 'PUBLISHED', onlyAvailable: filters.onlyAvailable || undefined, page: page.value, size: pageSize })
+    if (requestId !== latestClassRequest) return
     classes.value = result.records || []
     total.value = result.total || 0
   } catch {
+    if (requestId !== latestClassRequest) return
     classes.value = []
     total.value = 0
     error.value = '请检查网络或后端服务，然后重试。'
-  } finally { loading.value = false }
+  } finally { if (requestId === latestClassRequest) loading.value = false }
 }
 
 function requestAction(row: TeachingClassItem, action: 'enroll' | 'withdraw') {
@@ -172,6 +176,10 @@ onMounted(async () => {
   await loadClasses()
 })
 watch(() => termStore.currentTermId, async () => {
+  ++latestClassRequest
+  classes.value = []
+  total.value = 0
+  loading.value = true
   page.value = 1
   try { await enrollStore.fetchMine(termStore.currentTermId ?? undefined); enrollmentError.value = '' }
   catch { enrollmentError.value = '请刷新页面重试；选课状态暂不可用。' }
