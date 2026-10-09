@@ -4,6 +4,7 @@ import { useEnrollStore } from '../../src/stores/enroll'
 import { useTermStore } from '../../src/stores/term'
 import { getMyEnrollments } from '../../src/api/enrollments'
 import { getTerms } from '../../src/api/base'
+import type { EnrollmentItem } from '../../src/api/types'
 
 vi.mock('../../src/api/enrollments', () => ({
   getMyEnrollments: vi.fn(),
@@ -18,6 +19,44 @@ beforeEach(() => {
 })
 
 describe('选课状态', () => {
+  const selected: EnrollmentItem = {
+    id: 2, studentId: 1, teachingClassId: 8, className: '新学期班',
+    courseId: 2, courseName: '新学期课程', termId: 2, credit: 4,
+    status: 'ENROLLED', enrolledAt: '2026-10-09', source: 'PORTAL',
+  }
+
+  it('旧学期的慢响应不能覆盖已切换学期的课程与学分', async () => {
+    let completeOld!: (value: EnrollmentItem[]) => void
+    vi.mocked(getMyEnrollments)
+      .mockImplementationOnce(() => new Promise(resolve => { completeOld = resolve }))
+      .mockResolvedValueOnce([selected])
+    const store = useEnrollStore()
+    const previous = store.fetchMine(1)
+    await store.fetchMine(2)
+    completeOld([])
+    await previous
+    expect(store.enrolledClassIds.has(8)).toBe(true)
+    expect(store.totalCredits).toBe(4)
+  })
+
+  it('旧请求失败不能清除当前课程，也不能结束仍在进行的新请求', async () => {
+    let failOld!: (reason: Error) => void
+    let completeNew!: (value: EnrollmentItem[]) => void
+    vi.mocked(getMyEnrollments)
+      .mockImplementationOnce(() => new Promise((_, reject) => { failOld = reject }))
+      .mockImplementationOnce(() => new Promise(resolve => { completeNew = resolve }))
+    const store = useEnrollStore()
+    const previous = store.fetchMine(1)
+    const current = store.fetchMine(2)
+    failOld(new Error('old request failed'))
+    await previous
+    expect(store.loading).toBe(true)
+    completeNew([selected])
+    await current
+    expect(store.loading).toBe(false)
+    expect(store.totalCredits).toBe(4)
+  })
+
   it('接口失败时清除旧的已选课程且向页面抛错', async () => {
     vi.mocked(getMyEnrollments).mockResolvedValueOnce([{
       id: 1, studentId: 1, teachingClassId: 7, className: '01',

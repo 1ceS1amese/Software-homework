@@ -6,6 +6,7 @@ import type { EnrollmentItem, TeachingClassItem } from '@/api/types'
 export const useEnrollStore = defineStore('enroll', () => {
   const myEnrollments = ref<EnrollmentItem[]>([])
   const loading = ref(false)
+  let latestFetch = 0
 
   const activeEnrollments = computed(() => {
     return myEnrollments.value.filter(e => e.status === 'ENROLLED')
@@ -21,15 +22,18 @@ export const useEnrollStore = defineStore('enroll', () => {
   })
 
   async function fetchMine(termId?: number) {
+    const requestId = ++latestFetch
     loading.value = true
     try {
       const res = await getMyEnrollments(termId)
+      if (requestId !== latestFetch) return
       myEnrollments.value = res || []
     } catch (error) {
+      if (requestId !== latestFetch) return
       myEnrollments.value = []
       throw error
     } finally {
-      loading.value = false
+      if (requestId === latestFetch) loading.value = false
     }
   }
 
