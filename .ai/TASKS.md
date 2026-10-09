@@ -103,6 +103,6 @@
 | GIT-01 | 复用公开仓库、重新克隆并保留历史 | feature/course-experience；起始 main d31592e | [x] |
 | GIT-02 | 课程查询与已选课程状态防止过期响应覆盖 | CourseSelectionView、enroll store；单元 5 项、课程竞态 E2E 1 项通过 | [x] |
 | GIT-03 | 学生成绩随学期刷新与关键词 / 通过结果筛选 | MyGradesView、CreditSummaryView；2 项实际浏览器测试通过 | [x] |
-| GIT-04 | 教师花名册快速检索与可靠导出 | ClassRosterView、CSV 工具与回归测试 | [ ] |
+| GIT-04 | 教师花名册快速检索与可靠导出 | ClassRosterView、rosterCsv；CSV 单元 4 项、实际下载 E2E 1 项通过 | [x] |
 | GIT-05 | 错误提交、revert 回滚、合并与正常推送 | 可查提交图与回滚证据 | [ ] |
 | GIT-06 | 操作指南及文件 / 分支 / 完整历史同步验收 | docs/15、docs/evidence/git-practice-20261009.md | [ ] |
