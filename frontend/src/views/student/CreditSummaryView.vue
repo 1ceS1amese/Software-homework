@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { getStudentSummary } from '@/api/stats'
 import { useAuthStore } from '@/stores/auth'
 import { useTermStore } from '@/stores/term'
@@ -28,6 +28,7 @@ const termStore = useTermStore()
 const summary = ref<StudentCreditSummary | null>(null)
 const loading = ref(false)
 const error = ref('')
+let latestRequest = 0
 const cards = computed(() => [
   { label: '本学期已选学分', value: summary.value?.totalEnrolledCredits ?? '—', hint: '以当前选课记录为准' },
   { label: '已获学分', value: summary.value?.earnedCredits ?? '—', hint: '通过且已发布成绩的课程' },
@@ -35,15 +36,19 @@ const cards = computed(() => [
   { label: '考核通过率', value: summary.value ? (summary.value.courseCount ? `${Math.round(summary.value.passCount / summary.value.courseCount * 100)}%` : '—') : '—', hint: summary.value ? `未通过 ${summary.value.failCount} 门` : '暂无数据' },
 ])
 async function loadData() {
-  loading.value = true
+  const requestId = ++latestRequest
+  const termId = termStore.currentTermId
+  summary.value = null
   error.value = ''
+  if (termId == null) { loading.value = false; return }
+  loading.value = true
   try {
     if (!authStore.user?.id) throw new Error('用户信息不可用')
-    summary.value = await getStudentSummary(authStore.user.id, termStore.currentTermId ?? undefined)
+    const result = await getStudentSummary(authStore.user.id, termId)
+    if (requestId === latestRequest) summary.value = result
   } catch {
-    summary.value = null
-    error.value = '请检查网络或后端服务，然后重试。'
-  } finally { loading.value = false }
+    if (requestId === latestRequest) error.value = '请检查网络或后端服务，然后重试。'
+  } finally { if (requestId === latestRequest) loading.value = false }
 }
-onMounted(() => { void loadData() })
+watch(() => termStore.currentTermId, () => { void loadData() }, { immediate: true })
 </script>
