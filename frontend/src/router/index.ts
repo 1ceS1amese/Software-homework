@@ -68,7 +68,7 @@ const routes: RouteRecordRaw[] = [
     path: '/teacher/classes',
     name: 'TeacherClasses',
     component: () => import('@/views/teacher/MyClassesView.vue'),
-    meta: { requiresAuth: true, roles: ['TEACHER'], nav: true, icon: 'i-lucide-chalkboard-teacher', title: '我的教学班' },
+    meta: { requiresAuth: true, roles: ['TEACHER'], nav: true, icon: 'i-lucide-presentation', title: '我的教学班' },
   },
   {
     path: '/teacher/classes/:id/roster',

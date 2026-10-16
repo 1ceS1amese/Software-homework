@@ -6,7 +6,12 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), tailwindcss(), ui({ colorMode: false, ui: { colors: { primary: 'teal', neutral: 'slate' } } })],
+  plugins: [vue(), tailwindcss(), ui({
+    colorMode: false,
+    // 导航图标定义在路由 TS 中，也必须纳入扫描，避免运行时请求外部图标服务。
+    icon: { clientBundle: { scan: { globInclude: ['src/**/*.{vue,ts}'] } } },
+    ui: { colors: { primary: 'teal', neutral: 'slate' } },
+  })],
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, 'src'),
