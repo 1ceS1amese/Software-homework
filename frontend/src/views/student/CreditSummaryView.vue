@@ -1,6 +1,6 @@
 <template>
   <PageContainer title="学分与学业概览" description="依据已选课程与正式发布的成绩计算，数据按当前学期筛选。">
-    <template #actions><UButton color="neutral" variant="outline" icon="i-lucide-refresh-cw" :loading="loading" @click="loadData">刷新</UButton></template>
+    <template #actions><UButton color="neutral" variant="outline" icon="i-lucide-refresh-cw" :loading="loading" @click="loadData()">刷新</UButton></template>
     <div class="space-y-5">
       <UAlert v-if="error" color="error" variant="soft" icon="i-lucide-circle-alert" title="学分统计加载失败" :description="error" />
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -16,12 +16,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { getStudentSummary } from '@/api/stats'
 import { useAuthStore } from '@/stores/auth'
 import { useTermStore } from '@/stores/term'
 import type { StudentCreditSummary } from '@/api/types'
 import PageContainer from '@/components/PageContainer.vue'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 const authStore = useAuthStore()
 const termStore = useTermStore()
@@ -35,20 +36,22 @@ const cards = computed(() => [
   { label: '平均学分绩点', value: summary.value?.gpa ?? '—', hint: '由后端按学分加权计算' },
   { label: '考核通过率', value: summary.value ? (summary.value.courseCount ? `${Math.round(summary.value.passCount / summary.value.courseCount * 100)}%` : '—') : '—', hint: summary.value ? `未通过 ${summary.value.failCount} 门` : '暂无数据' },
 ])
-async function loadData() {
+async function loadData(background = false) {
+  if (background && loading.value) return
   const requestId = ++latestRequest
   const termId = termStore.currentTermId
-  summary.value = null
-  error.value = ''
+  if (!background) { summary.value = null; error.value = '' }
   if (termId == null) { loading.value = false; return }
-  loading.value = true
+  if (!background) loading.value = true
   try {
     if (!authStore.user?.id) throw new Error('用户信息不可用')
     const result = await getStudentSummary(authStore.user.id, termId)
-    if (requestId === latestRequest) summary.value = result
+    if (requestId === latestRequest) { summary.value = result; error.value = '' }
   } catch {
     if (requestId === latestRequest) error.value = '请检查网络或后端服务，然后重试。'
   } finally { if (requestId === latestRequest) loading.value = false }
 }
 watch(() => termStore.currentTermId, () => { void loadData() }, { immediate: true })
+useAutoRefresh(() => loadData(true))
+onUnmounted(() => { latestRequest++ })
 </script>

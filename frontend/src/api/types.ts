@@ -176,6 +176,8 @@ export interface TeachingClassItem {
   endWeek: number
   openClassDate?: string
   status: TeachingClassStatus
+  /** 个人课表附带选课关系状态，保留已完成课程并禁止误退。 */
+  enrollmentStatus?: EnrollmentStatus
   schedules?: ClassScheduleItem[]
 }
 

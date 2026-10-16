@@ -53,7 +53,7 @@ public class EnrollmentRuleChecker {
                   JOIN enrollment e
                     ON e.teaching_class_id = s2.teaching_class_id
                    AND e.student_id = ?
-                   AND e.status = 'ENROLLED'
+                   AND e.status IN ('ENROLLED','COMPLETED')
                    AND e.deleted = 0
                   JOIN course c ON c.id = e.course_id
                  WHERE s1.teaching_class_id = ?
@@ -131,7 +131,7 @@ public class EnrollmentRuleChecker {
     public BigDecimal currentCredit(Long studentId, Long termId) {
         BigDecimal sum = jdbc.queryForObject("""
                 SELECT COALESCE(SUM(credit), 0) FROM enrollment
-                 WHERE student_id = ? AND term_id = ? AND status = 'ENROLLED' AND deleted = 0
+                 WHERE student_id = ? AND term_id = ? AND status IN ('ENROLLED','COMPLETED') AND deleted = 0
                 """, BigDecimal.class, studentId, termId);
         return sum == null ? BigDecimal.ZERO : sum;
     }

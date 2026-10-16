@@ -86,7 +86,8 @@
           </dl>
 
           <div class="pt-6">
-            <UButton color="error" block :disabled="!termStore.isWithdrawAllowedNow" @click="confirmOpen = true">退选本门课程</UButton>
+            <p v-if="selectedClass.enrollmentStatus === 'COMPLETED'" class="text-sm text-(--ui-text-muted)">课程已完成，成绩已发布，不可退课。</p>
+            <UButton color="error" block :disabled="!termStore.isWithdrawAllowedNow || selectedClass.enrollmentStatus === 'COMPLETED'" @click="confirmOpen = true">退选本门课程</UButton>
           </div>
         </div>
       </template>
@@ -148,7 +149,7 @@ function openDetail(item: TeachingClassItem) {
 }
 
 async function handleWithdraw() {
-  if (!selectedClass.value) return
+  if (!selectedClass.value || selectedClass.value.enrollmentStatus === 'COMPLETED') return
   try {
     withdrawLoading.value = true
     await withdrawClass(selectedClass.value.id)

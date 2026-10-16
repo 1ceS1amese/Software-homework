@@ -115,7 +115,7 @@ public class StatQueryService {
 
         BigDecimal enrolledCredits = jdbc.queryForObject("""
                 SELECT COALESCE(SUM(credit), 0) FROM enrollment
-                 WHERE student_id = ? AND status = 'ENROLLED' AND deleted = 0
+                 WHERE student_id = ? AND status IN ('ENROLLED','COMPLETED') AND deleted = 0
                 """ + termFilter, BigDecimal.class, studentId);
 
         Map<String, Object> earned = jdbc.queryForMap("""
@@ -124,7 +124,7 @@ public class StatQueryService {
                   FROM enrollment e
                   JOIN grade g ON g.enrollment_id = e.id
                  WHERE e.student_id = ? AND e.status = 'COMPLETED' AND e.deleted = 0
-                   AND g.status = 'PUBLISHED' AND g.is_pass = 1
+                   AND g.status = 'PUBLISHED' AND g.deleted=0 AND g.is_pass = 1
                 """ + (termId != null ? " AND e.term_id = " + termId : ""), studentId);
 
         Map<String, Object> allCompleted = jdbc.queryForMap("""
@@ -133,7 +133,7 @@ public class StatQueryService {
                   FROM enrollment e
                   JOIN grade g ON g.enrollment_id = e.id
                  WHERE e.student_id = ? AND e.status = 'COMPLETED' AND e.deleted = 0
-                   AND g.status = 'PUBLISHED'
+                   AND g.status = 'PUBLISHED' AND g.deleted=0
                 """ + (termId != null ? " AND e.term_id = " + termId : ""), studentId);
 
         BigDecimal gpa = jdbc.queryForObject("""
@@ -141,7 +141,7 @@ public class StatQueryService {
                   FROM enrollment e
                   JOIN grade g ON g.enrollment_id = e.id
                  WHERE e.student_id = ? AND e.status = 'COMPLETED' AND e.deleted = 0
-                   AND g.status = 'PUBLISHED'
+                   AND g.status = 'PUBLISHED' AND g.deleted=0
                 """ + (termId != null ? " AND e.term_id = " + termId : ""), BigDecimal.class, studentId);
 
         Map<String, Object> result = new LinkedHashMap<>();

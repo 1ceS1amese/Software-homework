@@ -128,12 +128,13 @@ public class EnrollmentService {
                        tc.location        AS location,
                        tc.start_week      AS startWeek,
                        tc.end_week        AS endWeek,
-                       tc.status          AS status
+                       tc.status          AS status,
+                       e.status           AS enrollmentStatus
                   FROM enrollment e
                   JOIN teaching_class tc ON tc.id = e.teaching_class_id
                   JOIN course c          ON c.id = tc.course_id
                   LEFT JOIN sys_user u   ON u.id = tc.teacher_id
-                 WHERE e.student_id = ? AND e.status = 'ENROLLED' AND e.deleted = 0
+                 WHERE e.student_id = ? AND e.status IN ('ENROLLED','COMPLETED') AND e.deleted = 0
                 """);
         List<Object> args = new ArrayList<>();
         args.add(studentId);

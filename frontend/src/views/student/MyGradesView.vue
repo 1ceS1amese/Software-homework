@@ -1,7 +1,9 @@
 <template>
   <PageContainer title="我的成绩" description="仅展示任课教师已正式发布的成绩。">
-    <template #actions><UButton color="neutral" variant="outline" icon="i-lucide-refresh-cw" :loading="loading" @click="loadData">刷新</UButton></template>
+    <template #actions><UButton color="neutral" variant="outline" icon="i-lucide-refresh-cw" :loading="loading" @click="loadData()">刷新</UButton></template>
     <div class="space-y-5">
+      <p class="text-sm text-(--ui-text-muted)">成绩自动同步；教师发布或教务撤回后会提示变化。</p>
+      <p v-if="syncMessage" role="status" class="rounded-xl bg-(--ui-bg-elevated) p-4 text-sm">{{ syncMessage }}</p>
       <UAlert v-if="error" color="error" variant="soft" icon="i-lucide-circle-alert" title="成绩加载失败" :description="error" />
       <div class="grid gap-4 sm:grid-cols-3">
         <div v-for="item in summaryCards" :key="item.label" class="rounded-xl border border-(--ui-border) bg-(--ui-bg) p-5">
@@ -33,12 +35,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
 import { getMyGrades } from '@/api/grades'
 import { useTermStore } from '@/stores/term'
 import type { GradeItem } from '@/api/types'
 import PageContainer from '@/components/PageContainer.vue'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
+import { notify } from '@/utils/notify'
 
 const termStore = useTermStore()
 const rawGrades = ref<GradeItem[]>([])
@@ -54,6 +58,8 @@ const grades = computed(() => publishedGrades.value.filter(g => {
 const loading = ref(false)
 const error = ref('')
 let latestRequest = 0
+let hasBaseline = false
+const syncMessage = ref('')
 const columns: TableColumn<GradeItem>[] = [
   { accessorKey: 'courseName', header: '课程' }, { accessorKey: 'credit', header: '学分' },
   { accessorKey: 'regularScore', header: '平时' }, { accessorKey: 'midtermScore', header: '期中' },
@@ -71,19 +77,35 @@ const summaryCards = computed(() => [
   { label: '学分加权平均分', value: weightedAverage('totalScore') },
   { label: '学分加权绩点', value: weightedAverage('gradePoint') },
 ])
-async function loadData() {
+async function loadData(background = false) {
+  if (background && loading.value) return
   const requestId = ++latestRequest
   const termId = termStore.currentTermId
-  rawGrades.value = []
-  error.value = ''
+  if (!background) { if (!hasBaseline) rawGrades.value = []; error.value = '' }
   if (termId == null) { loading.value = false; return }
-  loading.value = true
+  if (!background) loading.value = true
   try {
     const rows = await getMyGrades(termId)
-    if (requestId === latestRequest) rawGrades.value = rows || []
+    if (requestId !== latestRequest) return
+    const next = (rows || []).filter(row => row.status === 'PUBLISHED')
+    if (hasBaseline) {
+      const fingerprint = (row: GradeItem) => JSON.stringify([row.totalScore, row.gradePoint, row.isPass, row.publishedAt])
+      const previous = new Map(rawGrades.value.map(row => [row.id, fingerprint(row)]))
+      const nextIds = new Set(next.map(row => row.id))
+      const updated = next.filter(row => previous.get(row.id) !== fingerprint(row))
+      const removed = rawGrades.value.filter(row => !nextIds.has(row.id))
+      const messages = [updated.length ? `成绩已更新：${updated.map(row => row.courseName).join('、')}` : '',
+        removed.length ? `成绩已撤回：${removed.map(row => row.courseName).join('、')}` : ''].filter(Boolean)
+      if (messages.length) { syncMessage.value = messages.join('；'); notify(syncMessage.value, 'info') }
+    }
+    rawGrades.value = next; hasBaseline = true; error.value = ''
   } catch {
     if (requestId === latestRequest) error.value = '请检查网络或后端服务，然后重试。'
   } finally { if (requestId === latestRequest) loading.value = false }
 }
-watch(() => termStore.currentTermId, () => { void loadData() }, { immediate: true })
+watch(() => termStore.currentTermId, () => {
+  hasBaseline = false; syncMessage.value = ''; void loadData()
+}, { immediate: true })
+useAutoRefresh(() => loadData(true))
+onUnmounted(() => { latestRequest++ })
 </script>
