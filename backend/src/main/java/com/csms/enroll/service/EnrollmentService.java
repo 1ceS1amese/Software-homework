@@ -38,10 +38,18 @@ public class EnrollmentService {
 
     /** E-01 选课（带死锁重试） */
     public Map<String, Object> enroll(Long studentId, Long teachingClassId) {
+        return enroll(studentId, teachingClassId, "PORTAL");
+    }
+
+    public Map<String, Object> adminEnroll(Long studentId, Long teachingClassId) {
+        return enroll(studentId, teachingClassId, "ADMIN");
+    }
+
+    private Map<String, Object> enroll(Long studentId, Long teachingClassId, String source) {
         RuntimeException last = null;
         for (int attempt = 0; attempt <= MAX_RETRY; attempt++) {
             try {
-                return commandService.doEnroll(studentId, teachingClassId);
+                return commandService.doEnroll(studentId, teachingClassId, source);
             } catch (DuplicateKeyException e) {
                 // 唯一键兜底：并发下同一学生重复提交
                 throw new BizException(ErrorCode.ENROLL_DUPLICATE);
@@ -196,6 +204,14 @@ public class EnrollmentService {
     }
 
     /** E-06 教学班选课名单（教师 / 管理员） */
+    public void assertCanReadClass(Long teachingClassId, Long userId, boolean isAdmin) {
+        var rows = jdbc.queryForList("SELECT teacher_id FROM teaching_class WHERE id=? AND deleted=0", teachingClassId);
+        if (rows.isEmpty()) throw new BizException(ErrorCode.NOT_FOUND, "教学班不存在");
+        if (!isAdmin && ((Number) rows.get(0).get("teacher_id")).longValue() != userId) {
+            throw new BizException(ErrorCode.FORBIDDEN, "只能查看本人教学班的学生名单");
+        }
+    }
+
     public List<Map<String, Object>> classStudents(Long teachingClassId) {
         return jdbc.queryForList("""
                 SELECT e.id                        AS id,

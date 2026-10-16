@@ -1,5 +1,6 @@
 package com.csms.enroll.service;
 
+import com.csms.audit.service.AuditWriter;
 import com.csms.common.error.BizException;
 import com.csms.common.error.ErrorCode;
 import com.csms.enroll.domain.CapacityGuard;
@@ -29,18 +30,21 @@ public class EnrollmentCommandService {
     private final EnrollmentRuleChecker ruleChecker;
     private final CapacityGuard capacityGuard;
     private final JdbcTemplate jdbc;
+    private final AuditWriter audit;
 
     public EnrollmentCommandService(EnrollmentRuleChecker ruleChecker,
                                     CapacityGuard capacityGuard,
-                                    JdbcTemplate jdbc) {
+                                    JdbcTemplate jdbc, AuditWriter audit) {
         this.ruleChecker = ruleChecker;
         this.capacityGuard = capacityGuard;
         this.jdbc = jdbc;
+        this.audit = audit;
     }
 
     /** 执行选课，返回落库后的选课记录视图 */
     @Transactional
-    public Map<String, Object> doEnroll(Long studentId, Long teachingClassId) {
+    public Map<String, Object> doEnroll(Long studentId, Long teachingClassId, String source) {
+        lockActiveStudent(studentId);
         Map<String, Object> tc = loadTeachingClass(teachingClassId);
 
         String status = (String) tc.get("status");
@@ -67,24 +71,32 @@ public class EnrollmentCommandService {
         // 退课后重选：命中 WITHDRAWN 行则复活，否则新增（BR-10）
         int revived = jdbc.update("""
                 UPDATE enrollment
-                   SET status = 'ENROLLED', enrolled_at = NOW(), withdrawn_at = NULL, source = 'PORTAL'
-                 WHERE student_id = ? AND teaching_class_id = ? AND status = 'WITHDRAWN'
-                """, studentId, teachingClassId);
+                   SET status = 'ENROLLED', enrolled_at = NOW(), withdrawn_at = NULL, source = ?
+                 WHERE student_id = ? AND teaching_class_id = ? AND status = 'WITHDRAWN' AND deleted = 0
+                """, source, studentId, teachingClassId);
 
         if (revived == 0) {
             jdbc.update("""
                     INSERT INTO enrollment
                         (student_id, teaching_class_id, course_id, term_id, credit, status, enrolled_at, source)
-                    VALUES (?, ?, ?, ?, ?, 'ENROLLED', NOW(), 'PORTAL')
-                    """, studentId, teachingClassId, courseId, termId, credit);
+                    VALUES (?, ?, ?, ?, ?, 'ENROLLED', NOW(), ?)
+                    """, studentId, teachingClassId, courseId, termId, credit, source);
         }
 
-        return loadEnrollment(studentId, teachingClassId);
+        var enrolled = loadEnrollment(studentId, teachingClassId);
+        audit.record("ENROLL", "ENROLL", "enrollment", ((Number) enrolled.get("id")).longValue(),
+                null, Map.of("studentId", studentId, "teachingClassId", teachingClassId, "source", source, "status", "ENROLLED"));
+        return enrolled;
     }
 
     /** 执行退课（幂等） */
     @Transactional
     public void doWithdraw(Long studentId, Long teachingClassId) {
+        lockActiveStudent(studentId);
+        // 与成绩发布统一先锁教学班、再锁选课记录，避免相反锁顺序。
+        if (jdbc.queryForList("SELECT id FROM teaching_class WHERE id=? AND deleted=0 FOR UPDATE", teachingClassId).isEmpty()) {
+            throw new BizException(ErrorCode.NOT_FOUND, "教学班不存在");
+        }
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT id, status, credit, term_id FROM enrollment
                  WHERE student_id = ? AND teaching_class_id = ? AND deleted = 0
@@ -123,9 +135,18 @@ public class EnrollmentCommandService {
         jdbc.update("""
                 UPDATE teaching_class SET enrolled_count = GREATEST(enrolled_count - 1, 0) WHERE id = ?
                 """, teachingClassId);
+        audit.record("ENROLL", "WITHDRAW", "enrollment", ((Number) row.get("id")).longValue(),
+                Map.of("status", status), Map.of("status", "WITHDRAWN", "teachingClassId", teachingClassId));
     }
 
     // —————————————————— 内部辅助 ——————————————————
+
+    private void lockActiveStudent(Long studentId) {
+        var rows = jdbc.queryForList("SELECT user_type, status FROM sys_user WHERE id=? AND deleted=0 FOR UPDATE", studentId);
+        if (rows.isEmpty() || !"STUDENT".equals(rows.get(0).get("user_type")) || !"ACTIVE".equals(rows.get(0).get("status"))) {
+            throw new BizException(ErrorCode.ENROLL_ACCOUNT_ABNORMAL);
+        }
+    }
 
     private Map<String, Object> loadTeachingClass(Long teachingClassId) {
         List<Map<String, Object>> rows = jdbc.queryForList("""

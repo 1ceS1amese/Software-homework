@@ -31,14 +31,14 @@ public class EnrollmentController {
     /** E-01 选课 */
     @PostMapping
     public ApiResponse<Map<String, Object>> enroll(@Valid @RequestBody EnrollRequest request) {
-        CurrentUserHolder.UserContext me = currentUser();
+        CurrentUserHolder.UserContext me = requireStudent();
         return ApiResponse.success(enrollmentService.enroll(me.getId(), request.getTeachingClassId()));
     }
 
     /** E-02 退课（按教学班 ID，幂等） */
     @DeleteMapping("/{teachingClassId}")
     public ApiResponse<Void> withdraw(@PathVariable Long teachingClassId) {
-        CurrentUserHolder.UserContext me = currentUser();
+        CurrentUserHolder.UserContext me = requireStudent();
         enrollmentService.withdraw(me.getId(), teachingClassId);
         return ApiResponse.success();
     }
@@ -46,21 +46,21 @@ public class EnrollmentController {
     /** E-03 我的选课 */
     @GetMapping("/my")
     public ApiResponse<List<Map<String, Object>>> myEnrollments(@RequestParam(required = false) Long termId) {
-        CurrentUserHolder.UserContext me = currentUser();
+        CurrentUserHolder.UserContext me = requireStudent();
         return ApiResponse.success(enrollmentService.myEnrollments(me.getId(), termId));
     }
 
     /** E-04 我的课表 */
     @GetMapping("/my/schedule")
     public ApiResponse<List<Map<String, Object>>> mySchedule(@RequestParam(required = false) Long termId) {
-        CurrentUserHolder.UserContext me = currentUser();
+        CurrentUserHolder.UserContext me = requireStudent();
         return ApiResponse.success(enrollmentService.mySchedule(me.getId(), termId));
     }
 
     /** E-05 选课预检（不占名额） */
     @GetMapping("/precheck/{teachingClassId}")
     public ApiResponse<Map<String, Object>> precheck(@PathVariable Long teachingClassId) {
-        CurrentUserHolder.UserContext me = currentUser();
+        CurrentUserHolder.UserContext me = requireStudent();
         return ApiResponse.success(enrollmentService.precheck(me.getId(), teachingClassId));
     }
 
@@ -69,6 +69,7 @@ public class EnrollmentController {
     public ApiResponse<List<Map<String, Object>>> classStudents(@PathVariable Long teachingClassId) {
         CurrentUserHolder.UserContext me = currentUser();
         requireTeacherOrAdmin(me);
+        enrollmentService.assertCanReadClass(teachingClassId, me.getId(), "ADMIN".equals(me.getRole()));
         return ApiResponse.success(enrollmentService.classStudents(teachingClassId));
     }
 
@@ -79,7 +80,7 @@ public class EnrollmentController {
         if (!"ADMIN".equals(me.getRole())) {
             throw new BizException(ErrorCode.FORBIDDEN, "只有管理员可以代选课");
         }
-        return ApiResponse.success(enrollmentService.enroll(request.getStudentId(), request.getTeachingClassId()));
+        return ApiResponse.success(enrollmentService.adminEnroll(request.getStudentId(), request.getTeachingClassId()));
     }
 
     // —————————————————— 辅助 ——————————————————
@@ -97,6 +98,14 @@ public class EnrollmentController {
         if (!"TEACHER".equals(role) && !"ADMIN".equals(role)) {
             throw new BizException(ErrorCode.FORBIDDEN, "只有教师或管理员可以查看选课名单");
         }
+    }
+
+    private CurrentUserHolder.UserContext requireStudent() {
+        var me = currentUser();
+        if (!"STUDENT".equals(me.getRole())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "只有学生可以使用个人选课功能");
+        }
+        return me;
     }
 
     @Data
