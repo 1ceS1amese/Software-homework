@@ -21,5 +21,5 @@ export async function api(page: Page, path: string, method = 'GET', data?: unkno
   const response = await page.request.fetch(`/api${path}`, {
     method, headers: { Authorization: `Bearer ${token}` }, data,
   })
-  return { status: response.status(), body: await response.json() }
+  return { status: response.status(), body: await response.json(), headers: response.headers() }
 }

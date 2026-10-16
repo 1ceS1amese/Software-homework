@@ -1,5 +1,7 @@
 package com.csms.security;
 
+import com.csms.common.api.ApiResponse;
+import com.csms.common.error.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
@@ -12,9 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -46,17 +45,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setContentType("application/json;charset=UTF-8");
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            Map<String, Object> result = new HashMap<>();
-                            result.put("code", 401);
-                            result.put("message", "Unauthorized");
+                            var result = ApiResponse.error(ErrorCode.AUTH_INVALID_TOKEN.getCode(), "请先登录或重新登录");
                             response.getWriter().write(objectMapper.writeValueAsString(result));
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setContentType("application/json;charset=UTF-8");
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            Map<String, Object> result = new HashMap<>();
-                            result.put("code", 403);
-                            result.put("message", "Forbidden");
+                            var result = ApiResponse.error(ErrorCode.FORBIDDEN.getCode(), "当前角色无权访问该资源");
                             response.getWriter().write(objectMapper.writeValueAsString(result));
                         })
                 )

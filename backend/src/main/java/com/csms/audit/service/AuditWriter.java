@@ -5,6 +5,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.slf4j.MDC;
 
 /** 必须在业务事务内调用；不记录密码、令牌或完整请求体。 */
 @Component
@@ -20,16 +23,18 @@ public class AuditWriter {
     public void record(String module, String action, String targetType, Long targetId,
                        Object before, Object after) {
         var user = CurrentUserHolder.get();
+        var attributes = RequestContextHolder.getRequestAttributes();
+        var ip = attributes instanceof ServletRequestAttributes servlet ? servlet.getRequest().getRemoteAddr() : null;
         try {
             jdbc.update("""
                     INSERT INTO sys_audit_log
                       (user_id, username, role_code, module, action, target_type, target_id,
-                       before_json, after_json, result)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SUCCESS')
+                       before_json, after_json, result, ip, trace_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SUCCESS', ?, ?)
                     """, user == null ? null : user.getId(), user == null ? null : user.getUsername(),
                     user == null ? null : user.getRole(), module, action, targetType, targetId,
                     before == null ? null : mapper.writeValueAsString(before),
-                    after == null ? null : mapper.writeValueAsString(after));
+                    after == null ? null : mapper.writeValueAsString(after), ip, MDC.get("traceId"));
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("审计数据序列化失败", exception);
         }

@@ -39,6 +39,8 @@ test('AC-01 管理员在前端新增、修改、删除课程，数据库同步�
   expect(database(`SELECT GROUP_CONCAT(action ORDER BY id) FROM sys_audit_log
     WHERE target_type='course' AND target_id=(SELECT id FROM course WHERE course_code='${code}')`))
     .toBe('CREATE_COURSE,UPDATE_COURSE,DELETE_COURSE')
+  expect(database(`SELECT COUNT(*) FROM sys_audit_log WHERE target_type='course'
+    AND target_id=(SELECT id FROM course WHERE course_code='${code}') AND (trace_id IS NULL OR ip IS NULL)`)).toBe('0')
 })
 
 test('AC-01 重复代码、非法学分、无效院系、引用删除与越权写入不得落库', async ({ page }, info) => {

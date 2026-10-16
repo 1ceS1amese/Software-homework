@@ -1,6 +1,7 @@
 package com.csms.common.api;
 
 import lombok.Data;
+import org.slf4j.MDC;
 
 @Data
 public class ApiResponse<T> {
@@ -16,6 +17,7 @@ public class ApiResponse<T> {
         this.code = code;
         this.message = message;
         this.data = data;
+        this.traceId = MDC.get("traceId");
     }
 
     public static <T> ApiResponse<T> success() {
