@@ -1,10 +1,11 @@
 <template>
-  <PageContainer :title="`教学班选课名单 · #${classId}`" description="仅展示后端返回的真实选课名单。">
+  <PageContainer :title="`教学班选课名单 · #${classId}`" description="选课名单自动同步，学生选课或退课后会提示变化。">
     <template #actions>
       <UButton to="/teacher/classes" color="neutral" variant="outline" icon="i-lucide-arrow-left">返回列表</UButton>
       <UButton icon="i-lucide-download" :disabled="!filteredStudents.length || loading" @click="exportCsv">{{ keyword.trim() ? '导出筛选名单' : '导出花名册' }}</UButton>
     </template>
     <div class="space-y-5">
+      <p v-if="syncMessage" role="status" class="rounded-xl bg-(--ui-bg-elevated) p-4 text-sm">{{ syncMessage }}</p>
       <div class="flex flex-wrap items-end gap-3 rounded-xl border border-(--ui-border) bg-(--ui-bg) p-4">
         <UFormField label="检索学生" class="min-w-48 flex-1 sm:max-w-82">
           <UInput v-model="keyword" icon="i-lucide-search" placeholder="输入学号、姓名或教学班" class="w-full" />
@@ -13,7 +14,7 @@
         <span class="text-sm text-(--ui-text-muted)">显示 {{ filteredStudents.length }} / {{ students.length }} 名学生</span>
       </div>
       <UAlert v-if="error" color="error" variant="soft" icon="i-lucide-circle-alert" title="名单加载失败" :description="error">
-        <template #actions><UButton color="error" variant="outline" size="sm" @click="loadData">重试</UButton></template>
+        <template #actions><UButton color="error" variant="outline" size="sm" @click="loadData()">重试</UButton></template>
       </UAlert>
       <div class="overflow-x-auto rounded-xl border border-(--ui-border) bg-(--ui-bg)">
         <UTable :data="filteredStudents" :columns="columns" :loading="loading" class="min-w-165">
@@ -27,13 +28,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
 import { useRoute } from 'vue-router'
 import { getClassStudents } from '@/api/enrollments'
 import type { EnrollmentItem } from '@/api/types'
 import PageContainer from '@/components/PageContainer.vue'
 import { buildRosterCsv } from '@/utils/rosterCsv'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
+import { notify } from '@/utils/notify'
 
 const route = useRoute()
 const classId = computed(() => Number(route.params.id))
@@ -47,21 +50,35 @@ const filteredStudents = computed(() => {
 const loading = ref(false)
 const error = ref('')
 let latestRequest = 0
+let hasBaseline = false
+const syncMessage = ref('')
 const columns: TableColumn<EnrollmentItem>[] = [
   { id: 'student', header: '学号 / 账号' }, { accessorKey: 'studentName', header: '姓名' },
   { accessorKey: 'className', header: '教学班' }, { accessorKey: 'enrolledAt', header: '选课时间' },
   { id: 'source', header: '选课途径' },
 ]
-async function loadData() {
+async function loadData(background = false) {
+  if (background && loading.value) return
   const requestId = ++latestRequest
   const id = classId.value
-  loading.value = true
-  error.value = ''
-  students.value = []
+  if (!background) { loading.value = true; error.value = '' }
   try {
     if (!Number.isInteger(id) || id <= 0) throw new Error('无效班级')
     const rows = await getClassStudents(id)
-    if (requestId === latestRequest) students.value = rows || []
+    if (requestId !== latestRequest) return
+    const next = rows || []
+    if (hasBaseline) {
+      const previousIds = new Set(students.value.map(row => row.studentId))
+      const nextIds = new Set(next.map(row => row.studentId))
+      const added = next.filter(row => !previousIds.has(row.studentId))
+      const removed = students.value.filter(row => !nextIds.has(row.studentId))
+      const describe = (rows: EnrollmentItem[]) => rows.map(row => row.studentName || row.studentUsername || row.studentId).join('、')
+      const messages = [added.length ? `新增选课：${describe(added)}` : '', removed.length ? `退课通知：${describe(removed)}` : ''].filter(Boolean)
+      if (messages.length) { syncMessage.value = messages.join('；'); notify(syncMessage.value, 'info') }
+    }
+    students.value = next
+    hasBaseline = true
+    error.value = ''
   } catch {
     if (requestId === latestRequest) error.value = '请检查网络或后端服务，然后重试。'
   } finally { if (requestId === latestRequest) loading.value = false }
@@ -76,5 +93,10 @@ function exportCsv() {
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-watch(classId, () => { keyword.value = ''; void loadData() }, { immediate: true })
+watch(classId, () => {
+  keyword.value = ''; students.value = []; syncMessage.value = ''; hasBaseline = false
+  void loadData()
+}, { immediate: true })
+useAutoRefresh(() => loadData(true))
+onUnmounted(() => { latestRequest++ })
 </script>

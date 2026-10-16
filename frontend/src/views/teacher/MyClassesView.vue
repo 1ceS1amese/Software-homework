@@ -1,7 +1,9 @@
 <template>
   <PageContainer title="我的教学班" description="查看本人负责的课程、选课人数与成绩管理入口。">
-    <template #actions><UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" :loading="loading" @click="loadClasses">刷新列表</UButton></template>
+    <template #actions><UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" :loading="loading" @click="loadClasses()">刷新列表</UButton></template>
     <div class="space-y-5">
+      <p class="text-sm text-(--ui-text-muted)">选课人数自动同步；进入选课名单可查看学生变化。</p>
+      <p v-if="syncMessage" role="status" class="text-sm">{{ syncMessage }}</p>
       <UAlert v-if="error" color="error" variant="soft" icon="i-lucide-circle-alert" title="教学班加载失败" :description="error" />
       <div class="overflow-x-auto rounded-xl border border-(--ui-border) bg-(--ui-bg)">
         <UTable :data="classes" :columns="columns" :loading="loading" class="min-w-190">
@@ -18,18 +20,23 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
 import { getMyTeachingClasses } from '@/api/teachingClasses'
 import { useTermStore } from '@/stores/term'
 import type { ClassScheduleItem, TeachingClassItem } from '@/api/types'
 import PageContainer from '@/components/PageContainer.vue'
 import StatusTag from '@/components/StatusTag.vue'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
+import { notify } from '@/utils/notify'
 
 const termStore = useTermStore()
 const classes = ref<TeachingClassItem[]>([])
 const loading = ref(false)
 const error = ref('')
+const syncMessage = ref('')
+let latestRequest = 0
+let hasBaseline = false
 const columns: TableColumn<TeachingClassItem>[] = [
   { id: 'course', header: '课程 / 班号' }, { accessorKey: 'credit', header: '学分' },
   { id: 'seats', header: '选课人数' }, { id: 'status', header: '状态' },
@@ -37,12 +44,30 @@ const columns: TableColumn<TeachingClassItem>[] = [
 ]
 function fillRate(row: TeachingClassItem) { return row.capacity ? Math.min(100, Math.round(row.enrolledCount / row.capacity * 100)) : 0 }
 function formatSchedule(s: ClassScheduleItem) { return `周${['一', '二', '三', '四', '五', '六', '日'][s.dayOfWeek - 1] || s.dayOfWeek} 第${s.startSection}–${s.endSection}节 · ${s.location || '地点待定'}` }
-async function loadClasses() {
-  loading.value = true
-  error.value = ''
-  try { classes.value = await getMyTeachingClasses(termStore.currentTermId ?? undefined) || [] }
-  catch { classes.value = []; error.value = '请检查网络或后端服务，然后重试。' }
-  finally { loading.value = false }
+async function loadClasses(background = false) {
+  if (background && loading.value) return
+  const requestId = ++latestRequest
+  const termId = termStore.currentTermId
+  if (termId == null) { loading.value = false; return }
+  if (!background) { loading.value = true; error.value = '' }
+  try {
+    const rows = await getMyTeachingClasses(termId) || []
+    if (requestId !== latestRequest) return
+    if (hasBaseline) {
+      const changed = rows.filter(row => classes.value.some(old => old.id === row.id && old.enrolledCount !== row.enrolledCount))
+      if (changed.length) {
+        syncMessage.value = `选课人数已更新：${changed.map(row => `${row.className} ${row.enrolledCount} 人`).join('；')}`
+        notify(syncMessage.value, 'info')
+      }
+    }
+    classes.value = rows; hasBaseline = true; error.value = ''
+  } catch { if (requestId === latestRequest) error.value = '请检查网络或后端服务，然后重试。' }
+  finally { if (requestId === latestRequest) loading.value = false }
 }
-onMounted(() => { void loadClasses() })
+watch(() => termStore.currentTermId, () => {
+  classes.value = []; syncMessage.value = ''; hasBaseline = false
+  void loadClasses()
+}, { immediate: true })
+useAutoRefresh(() => loadClasses(true))
+onUnmounted(() => { latestRequest++ })
 </script>
