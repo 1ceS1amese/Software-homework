@@ -4,8 +4,11 @@ import { expect, type Page } from '@playwright/test'
 export function database(query: string): string {
   const config = process.env.ACCEPTANCE_MYSQL_CONFIG
   if (!config || !config.includes('/.local/acceptance/run-')) throw new Error('拒绝非隔离验收数据库')
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('MYSQL_')))
+  // --defaults-file 仍会读取机器的登录文件；指定本次目录中的不存在路径。
+  env.MYSQL_TEST_LOGIN_FILE = `${config}.disabled-login`
   return execFileSync('mysql', [`--defaults-file=${config}`, '--batch', '--raw', '--skip-column-names'],
-    { input: query, encoding: 'utf8' }).trim()
+    { input: query, encoding: 'utf8', env }).trim()
 }
 
 export async function login(page: Page, username: string) {

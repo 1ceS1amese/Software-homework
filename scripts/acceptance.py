@@ -72,7 +72,7 @@ def main():
     password = secrets.token_hex(24)
     # 保留工具链环境，移除可把 Spring 重定向到既有库/外部配置的继承参数。
     env = {key: value for key, value in os.environ.items()
-           if not key.startswith(('SPRING_', 'CSMS_', 'SERVER_', 'VITE_', 'ACCEPTANCE_'))
+           if not key.startswith(('SPRING_', 'CSMS_', 'SERVER_', 'VITE_', 'ACCEPTANCE_', 'MYSQL_'))
            and key not in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS')}
     # 不读取使用者配置；全部数据库/JWT/监听参数仅指向本次新实例。
     env.update(CSMS_DB_HOST='127.0.0.1', CSMS_DB_PORT=str(db_port),
@@ -82,7 +82,8 @@ def main():
                CSMS_CORS_ALLOWED_ORIGINS=f'http://127.0.0.1:{frontend_port}',
                VITE_API_TARGET=f'http://127.0.0.1:{backend_port}',
                ACCEPTANCE_BASE_URL=f'http://127.0.0.1:{frontend_port}',
-               ACCEPTANCE_BACKEND_URL=f'http://127.0.0.1:{backend_port}')
+               ACCEPTANCE_BACKEND_URL=f'http://127.0.0.1:{backend_port}',
+               MYSQL_TEST_LOGIN_FILE=str(run / 'disabled-login.cnf'))
     children, logs = [], []
 
     def start(command, name, cwd=PROJECT):
@@ -94,8 +95,9 @@ def main():
         return child
 
     def sql(text):
-        return subprocess.run(['mysql', '--no-defaults', f'--socket={run / "mysql.sock"}',
-                               '-uroot', '--batch', '--skip-column-names'], input=text,
+        return subprocess.run(['mysql', '--no-defaults', '--protocol=SOCKET', '--host=localhost',
+                               f'--socket={run / "mysql.sock"}', '-uroot', '--skip-password',
+                               '--batch', '--skip-column-names'], input=text, env=env,
                               text=True, capture_output=True, check=True).stdout
 
     def stop_signal(_signum, _frame):
