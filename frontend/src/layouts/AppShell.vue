@@ -2,7 +2,8 @@
   <div class="min-h-screen bg-(--ui-bg-muted) text-(--ui-text) lg:flex">
     <div v-if="menuOpen" class="fixed inset-0 z-40 bg-slate-950/50 lg:hidden" @click="menuOpen = false" />
     <aside
-      :class="menuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+      id="primary-sidebar"
+      :class="menuOpen ? 'translate-x-0 visible' : '-translate-x-full invisible lg:translate-x-0 lg:visible'"
       class="fixed inset-y-0 left-0 z-50 flex w-66 shrink-0 flex-col border-r border-slate-800 bg-slate-950 text-slate-200 transition-transform lg:sticky lg:top-0 lg:h-screen"
     >
       <div class="flex h-20 items-center gap-3 border-b border-slate-800 px-6">
@@ -45,7 +46,7 @@
 
     <div class="min-w-0 flex-1">
       <header class="sticky top-0 z-30 flex min-h-16 flex-wrap items-center gap-3 border-b border-(--ui-border) bg-(--ui-bg)/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
-        <UButton class="lg:hidden" icon="i-lucide-menu" color="neutral" variant="ghost" aria-label="打开菜单" @click="menuOpen = true" />
+        <UButton class="lg:hidden" icon="i-lucide-menu" color="neutral" variant="ghost" aria-label="打开菜单" aria-controls="primary-sidebar" :aria-expanded="menuOpen" @click="menuOpen = true" />
         <div class="min-w-0 flex-1">
           <div class="truncate text-sm font-semibold text-(--ui-text-highlighted)">{{ currentTitle }}</div>
           <div class="hidden text-xs text-(--ui-text-muted) sm:block">教学管理 / {{ sectionTitle }}</div>
