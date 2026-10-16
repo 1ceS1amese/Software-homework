@@ -13,6 +13,8 @@ git switch -c feature/your-change
 ./scripts/test.sh
 # 涉及真实业务查询时，先启动本地项目，再运行：
 ./scripts/test.sh live
+# 涉及课程/选退课/成绩写入或跨端同步，使用全新隔离实例：
+./scripts/test.sh acceptance
 ```
 
 提交必须包含必要源码、说明与契约变更；禁止提交真实 `.env*` 配置、数据库、依赖、日志、令牌、私钥、本机绝对路径及测试产生的认证数据。配置示例应仅包含占位值；机器记录应保存在 `.local/private-notes/` 或 `*.local.md`。暂存后必须运行 `python3 scripts/check-privacy.py`，核对实际待提交内容；该检查也包含在 `scripts/check.sh` 中。数据、接口或规则变化必须同步相关文档与有意义的测试。无生产部署授权时禁止远程部署。

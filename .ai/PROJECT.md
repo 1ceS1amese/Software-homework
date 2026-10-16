@@ -26,7 +26,7 @@
 | 鉴权 | 无状态 JWT | **JJWT 0.12.5**，签名算法由密钥长度推导，2 小时过期 |
 | 数据库 | MySQL 8.x / InnoDB / utf8mb4 | 开发实例由配置选择，工具版本以安装清单为准 |
 | 构建 | Maven（后端）、pnpm（前端） | Maven 3.9.12、pnpm 10.16.1 |
-| 测试 | JUnit5 / Testcontainers / MockMvc / Vitest / Playwright | 后端已有 JUnit5 规则与异常映射测试；前端已有 Vitest、Playwright 页面巡检与真实后端只读测试；Testcontainers / MockMvc 尚未接入 |
+| 测试 | JUnit5 / Testcontainers / MockMvc / Vitest / Playwright | 已有 JUnit5 规则与异常映射、Vitest、模拟接口 E2E、真实只读和隔离 MySQL 写入/并发/跨端浏览器套件；本轮禁止 Docker / Testcontainers，MockMvc 尚未接入 |
 
 ## 4. 必须保留的功能与约束
 
@@ -60,7 +60,7 @@
 
 ## 8. 已知阻塞
 
-- Nuxt UI Vue + Vite 接入已按官方文档实装并通过构建、浏览器巡检；管理端写入接口与全校成绩分布汇总仍由后端能力限制。
+- Nuxt UI Vue + Vite 与课程 CRUD 已交付；其余管理写入口、管理员解锁页面、全校成绩分布与全量审计仍有设计差距，范围见 docs/16。
 
 ## 8.1 Git 实践范围（2026-10-09）
 
