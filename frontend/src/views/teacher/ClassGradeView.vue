@@ -56,7 +56,7 @@ const publishing = ref(false)
 const confirmOpen = ref(false)
 const error = ref('')
 const isPublished = computed(() => grades.value.some(g => g.status === 'PUBLISHED'))
-const canEdit = computed(() => grades.value.length > 0 && !isPublished.value && !loading.value && !error.value)
+const canEdit = computed(() => grades.value.length > 0 && !isPublished.value && !loading.value && !saving.value && !publishing.value && !error.value)
 const canPublish = computed(() => canEdit.value && !!weights.value && grades.value.every(isComplete))
 function inputValue(value: number | undefined) { return value == null ? '' : String(value) }
 function validScore(value: number | undefined) { return value != null && Number.isFinite(value) && value >= 0 && value <= 100 }

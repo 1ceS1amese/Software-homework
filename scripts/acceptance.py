@@ -114,7 +114,7 @@ def main():
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         start(['mysqld', '--no-defaults', f'--user={user}', f'--basedir={basedir}',
                f'--datadir={data}', '--bind-address=127.0.0.1', f'--port={db_port}',
-               '--mysqlx=OFF', '--skip-name-resolve', f'--socket={run / "mysql.sock"}',
+               '--mysqlx=OFF', '--skip-name-resolve', '--skip-log-bin', f'--socket={run / "mysql.sock"}',
                f'--pid-file={run / "mysql.pid"}', '--character-set-server=utf8mb4'], 'mysql')
         wait_until(lambda: (run / 'mysql.sock').exists() and sql('SELECT 1;').strip() == '1', children)
         sql(f"CREATE DATABASE csms_acceptance CHARACTER SET utf8mb4;\n"
