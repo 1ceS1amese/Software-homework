@@ -1,0 +1,62 @@
+import { expect, test } from '@playwright/test'
+import { api, database, login } from './helpers'
+
+test('AC-01 管理员在前端新增、修改、删除课程，数据库同步且刷新后仍正确', async ({ page }, info) => {
+  const code = `AC-${info.project.name}-${Date.now()}`
+  await login(page, 'admin')
+  await page.goto('/admin/courses')
+  await expect(page.getByRole('button', { name: '新增课程', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '新增课程', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('课程代码', { exact: true }).fill(code)
+  await dialog.getByLabel('课程名称', { exact: true }).fill('验收新增课程')
+  await dialog.getByLabel('学分', { exact: true }).fill('2.5')
+  await dialog.getByLabel('学时', { exact: true }).fill('40')
+  await dialog.getByLabel('开课院系', { exact: true }).selectOption('1')
+  await dialog.getByRole('button', { name: '保存课程', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  expect(database(`SELECT CONCAT(name, '|', credit, '|', credit_hours, '|', deleted) FROM course WHERE course_code='${code}'`))
+    .toBe('验收新增课程|2.5|40|0')
+  await page.getByPlaceholder('搜索课程代码或名称').fill(code)
+  await page.getByRole('button', { name: '查询', exact: true }).click()
+  const row = page.getByRole('row').filter({ hasText: code })
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: '编辑', exact: true }).click()
+  await dialog.getByLabel('课程名称', { exact: true }).fill('验收修改课程')
+  await dialog.getByLabel('学分', { exact: true }).fill('3.5')
+  await dialog.getByRole('button', { name: '保存课程', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  expect(database(`SELECT CONCAT(name, '|', credit) FROM course WHERE course_code='${code}'`)).toBe('验收修改课程|3.5')
+  await page.reload()
+  await page.getByPlaceholder('搜索课程代码或名称').fill(code)
+  await page.getByRole('button', { name: '查询', exact: true }).click()
+  await expect(row).toContainText('验收修改课程')
+  await row.getByRole('button', { name: '删除', exact: true }).click()
+  await dialog.getByRole('button', { name: '确认删除', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(row).toHaveCount(0)
+  expect(database(`SELECT deleted FROM course WHERE course_code='${code}'`)).toBe('1')
+  expect(database(`SELECT GROUP_CONCAT(action ORDER BY id) FROM sys_audit_log
+    WHERE target_type='course' AND target_id=(SELECT id FROM course WHERE course_code='${code}')`))
+    .toBe('CREATE_COURSE,UPDATE_COURSE,DELETE_COURSE')
+})
+
+test('AC-01 重复代码、非法学分、无效院系、引用删除与越权写入不得落库', async ({ page }, info) => {
+  await login(page, 'admin')
+  const valid = { courseCode: `VALID-${info.project.name}-${Date.now() % 10000000}`, name: '边界校验课程', credit: 2, creditHours: 32, courseType: 'ELECTIVE', deptId: 1 }
+  const created = await api(page, '/courses', 'POST', valid)
+  expect(created.body.code).toBe(0)
+  expect((await api(page, '/courses', 'POST', valid)).body.code).toBe(30401)
+  for (const overrides of [{ credit: -1 }, { credit: 1.23 }, { deptId: 999999 }, { name: '' }]) {
+    const rejected = await api(page, `/courses/${created.body.data.id}`, 'PUT', { ...valid, ...overrides })
+    expect(rejected.status).toBe(400)
+    expect(rejected.body.message).toMatch(/[\u4e00-\u9fff]/)
+  }
+  expect(database(`SELECT CONCAT(name, '|', credit) FROM course WHERE id=${created.body.data.id}`)).toBe('边界校验课程|2.0')
+  expect((await api(page, '/courses/9001', 'DELETE')).body.code).not.toBe(0)
+  expect(database('SELECT deleted FROM course WHERE id=9001')).toBe('0')
+  await page.evaluate(() => localStorage.clear())
+  await login(page, 'student1')
+  expect((await api(page, '/courses', 'POST', { ...valid, courseCode: `DENIED-${info.project.name}` })).status).toBe(403)
+  expect(database(`SELECT COUNT(*) FROM course WHERE course_code='DENIED-${info.project.name}'`)).toBe('0')
+})
