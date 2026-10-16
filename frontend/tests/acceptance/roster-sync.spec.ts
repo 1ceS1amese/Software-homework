@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { api, database, login } from './helpers'
 
 test('AC-03 学生页面选退课后，另一独立教师会话自动接收名单与通知', async ({ page, browser }) => {
-  database("UPDATE enrollment SET status='WITHDRAWN' WHERE teaching_class_id=9101; UPDATE teaching_class SET enrolled_count=0 WHERE id=9101;")
+  database("DELETE FROM grade WHERE teaching_class_id=9101; UPDATE enrollment SET status='WITHDRAWN' WHERE teaching_class_id=9101; UPDATE teaching_class SET enrolled_count=0 WHERE id=9101;")
   const teacherContext = await browser.newContext({ baseURL: process.env.ACCEPTANCE_BASE_URL })
   const teacher = await teacherContext.newPage()
   try {
@@ -33,7 +33,7 @@ test('AC-03 学生页面选退课后，另一独立教师会话自动接收名�
 })
 
 test('AC-03 教师教学班列表自动更新人数并提示变化', async ({ page, browser }) => {
-  database("UPDATE enrollment SET status='WITHDRAWN' WHERE teaching_class_id=9101; UPDATE teaching_class SET enrolled_count=0 WHERE id=9101;")
+  database("DELETE FROM grade WHERE teaching_class_id=9101; UPDATE enrollment SET status='WITHDRAWN' WHERE teaching_class_id=9101; UPDATE teaching_class SET enrolled_count=0 WHERE id=9101;")
   await login(page, 'teacher1')
   await page.goto('/teacher/classes')
   const row = page.getByRole('row').filter({ hasText: '验收互动班' })

@@ -36,6 +36,10 @@ frontend/components.d.ts
 frontend/test-results/
 frontend/playwright-report/
 
+# Python 验收工具缓存
+__pycache__/
+*.pyc
+
 # IDE
 .idea/
 *.iml

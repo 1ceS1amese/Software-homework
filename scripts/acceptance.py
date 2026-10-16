@@ -70,8 +70,11 @@ def main():
     run.chmod(0o700)
     db_port, backend_port, frontend_port = free_port(), free_port(), free_port()
     password = secrets.token_hex(24)
-    env = os.environ.copy()
-    # 不读取或继承使用者的数据库/JWT 配置；全部指向本次新实例。
+    # 保留工具链环境，移除可把 Spring 重定向到既有库/外部配置的继承参数。
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith(('SPRING_', 'CSMS_', 'SERVER_', 'VITE_', 'ACCEPTANCE_'))
+           and key not in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS')}
+    # 不读取使用者配置；全部数据库/JWT/监听参数仅指向本次新实例。
     env.update(CSMS_DB_HOST='127.0.0.1', CSMS_DB_PORT=str(db_port),
                CSMS_DB_NAME='csms_acceptance', CSMS_DB_USERNAME='acceptance',
                CSMS_DB_PASSWORD=password, CSMS_JWT_SECRET=secrets.token_hex(48),

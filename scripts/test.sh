@@ -9,6 +9,7 @@ case "${1:-all}" in
   backend) shift; (cd "$PROJECT_DIR/backend" && bash ./mvnw -B -ntp test "$@") ;;
   unit) shift; (cd "$PROJECT_DIR/frontend" && pnpm test "$@") ;;
   e2e) shift; (cd "$PROJECT_DIR/frontend" && pnpm test:e2e "$@") ;;
+  acceptance) shift; python3 "$PROJECT_DIR/scripts/acceptance.py" "$@" ;;
   live)
     shift
     [[ -f "$PROJECT_DIR/.env.local" ]] || { echo "缺少本地环境，请先 setup/start。" >&2; exit 1; }
@@ -35,5 +36,5 @@ PY
     curl -fsS http://127.0.0.1:8081/actuator/health >/dev/null
     (cd "$PROJECT_DIR/frontend" && pnpm test:e2e:live "$@")
     ;;
-  *) echo "用法：$0 {all|backend|unit|e2e|live} [测试参数]" >&2; exit 2 ;;
+  *) echo "用法：$0 {all|backend|unit|e2e|live|acceptance} [测试参数]" >&2; exit 2 ;;
 esac

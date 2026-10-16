@@ -11,7 +11,7 @@ test('AC-02 教师不能作为学生选课，也不能读取其他教师的学�
 })
 
 test('AC-02 学生选退课、重复请求、重选与容量在数据库中保持一致', async ({ page }) => {
-  database("UPDATE enrollment SET status='WITHDRAWN' WHERE student_id=9003 AND teaching_class_id=9101; UPDATE teaching_class SET enrolled_count=0 WHERE id=9101;")
+  database("DELETE FROM grade WHERE teaching_class_id=9101; UPDATE enrollment SET status='WITHDRAWN' WHERE student_id=9003 AND teaching_class_id=9101; UPDATE teaching_class SET enrolled_count=0 WHERE id=9101;")
   await login(page, 'acceptance_student')
   const enrolled = await api(page, '/enrollments', 'POST', { teachingClassId: 9101 })
   expect(enrolled.body.code).toBe(0)
@@ -47,7 +47,7 @@ test('AC-02 20 个真实账号并发争抢 1 个名额，只有 1 次成功且�
 })
 
 test('AC-02 管理员代选必须校验学生身份并记录来源，停用后旧令牌也不能写入', async ({ page, browser }) => {
-  database("UPDATE enrollment SET status='WITHDRAWN' WHERE student_id=9003 AND teaching_class_id=9101; UPDATE teaching_class SET enrolled_count=0 WHERE id=9101;")
+  database("DELETE FROM grade WHERE teaching_class_id=9101; UPDATE enrollment SET status='WITHDRAWN' WHERE student_id=9003 AND teaching_class_id=9101; UPDATE teaching_class SET enrolled_count=0 WHERE id=9101;")
   await login(page, 'admin')
   expect((await api(page, '/enrollments/admin-enroll', 'POST', { studentId: 2, teachingClassId: 9101 })).body.code).toBe(50111)
   const selected = await api(page, '/enrollments/admin-enroll', 'POST', { studentId: 9003, teachingClassId: 9101 })
