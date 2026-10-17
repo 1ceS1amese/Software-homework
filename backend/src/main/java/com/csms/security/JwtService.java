@@ -25,9 +25,16 @@ public class JwtService {
     }
 
     public String generateToken(Long id, String username, String role, Long deptId) {
+        return generateToken(id, username, role, deptId, 0);
+    }
+
+    public String generateToken(Long id, String username, String role, Long deptId, int version) {
         return Jwts.builder()
-                .subject(username)
+                .subject(id.toString())
+                .id(java.util.UUID.randomUUID().toString())
                 .claim("id", id)
+                .claim("username", username)
+                .claim("ver", version)
                 .claim("role", role)
                 .claim("deptId", deptId)
                 .issuedAt(new Date(System.currentTimeMillis()))
@@ -57,8 +64,11 @@ public class JwtService {
     }
 
     public String getUsername(String token) {
-        return getClaims(token).getSubject();
+        var claims=getClaims(token);
+        return claims.get("username",String.class)==null ? claims.getSubject() : claims.get("username",String.class);
     }
+
+    public int getVersion(String token) { var value=getClaims(token).get("ver",Integer.class); return value==null ? 0 : value; }
 
     public Long getId(String token) {
         return getClaims(token).get("id", Long.class);

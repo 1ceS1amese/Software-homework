@@ -17,9 +17,11 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UserAccessRegistry access;
 
-    public JwtFilter(JwtService jwtService) {
+    public JwtFilter(JwtService jwtService, UserAccessRegistry access) {
         this.jwtService = jwtService;
+        this.access = access;
     }
 
     @Override
@@ -28,7 +30,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            if (jwtService.validateToken(token)) {
+            if (jwtService.validateToken(token) && access.permits(jwtService.getId(token), jwtService.getUsername(token), jwtService.getRole(token), jwtService.getVersion(token))) {
                 Long id = jwtService.getId(token);
                 String username = jwtService.getUsername(token);
                 String role = jwtService.getRole(token);

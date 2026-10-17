@@ -25,9 +25,11 @@ import java.util.Map;
 public class UserController {
 
     private final JdbcTemplate jdbc;
+    private final com.csms.user.service.UserCommandService commands;
 
-    public UserController(JdbcTemplate jdbc) {
+    public UserController(JdbcTemplate jdbc, com.csms.user.service.UserCommandService commands) {
         this.jdbc = jdbc;
+        this.commands=commands;
     }
 
     /** U-01 用户列表 */
@@ -123,12 +125,7 @@ public class UserController {
         if (!"ACTIVE".equals(status) && !"DISABLED".equals(status)) {
             throw new BizException(ErrorCode.PARAM_ERROR, "状态只能是 ACTIVE 或 DISABLED");
         }
-        int updated = jdbc.update("""
-                UPDATE sys_user SET status = ?, updated_at = NOW() WHERE id = ? AND deleted = 0
-                """, status, id);
-        if (updated == 0) {
-            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
-        }
+        commands.status(id,status);
         return ApiResponse.success();
     }
 

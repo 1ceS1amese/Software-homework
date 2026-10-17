@@ -37,11 +37,13 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final com.csms.security.UserAccessRegistry access;
 
-    public AuthServiceImpl(UserMapper userMapper, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthServiceImpl(UserMapper userMapper, PasswordEncoder passwordEncoder, JwtService jwtService, com.csms.security.UserAccessRegistry access) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.access = access;
     }
 
     @Override
@@ -71,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
                 .set(User::getLastLoginAt, LocalDateTime.now()));
 
         String role = user.getUserType() == null ? null : user.getUserType().name();
-        return jwtService.generateToken(user.getId(), user.getUsername(), role, user.getDeptId());
+        return jwtService.generateToken(user.getId(), user.getUsername(), role, user.getDeptId(), user.getVersion()==null?0:user.getVersion());
     }
 
     private void recordFailure(User user) {
@@ -153,6 +155,8 @@ public class AuthServiceImpl implements AuthService {
         userMapper.update(null, new LambdaUpdateWrapper<User>()
                 .eq(User::getId, user.getId())
                 .set(User::getPassword, passwordEncoder.encode(newPassword))
+                .setSql("version=version+1")
                 .set(User::getMustChangePwd, false));
+        access.changed(ctx.getId());
     }
 }
