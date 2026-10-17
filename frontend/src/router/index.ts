@@ -83,6 +83,8 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, roles: ['TEACHER'], title: '成绩录入与发布' },
   },
 
+  { path: '/teacher/manage', name: 'TeacherManage', component: () => import('@/views/teacher/TeachingClassManagementView.vue'), meta: { requiresAuth: true, roles: ['TEACHER'], nav: true, title: '教学班维护', icon: 'i-lucide-presentation' } },
+
   // 管理区 (ADMIN)
   {
     path: '/admin',

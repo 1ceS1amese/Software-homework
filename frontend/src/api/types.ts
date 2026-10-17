@@ -168,6 +168,7 @@ export interface TeachingClassItem {
   teacherId: number
   teacherName: string
   className: string
+  description?: string
   capacity: number
   enrolledCount: number
   credit: number

@@ -28,34 +28,34 @@ public class TeachingClassStateMachine {
     public void assertTransit(TeachingClass teachingClass, List<ClassSchedule> schedules, Action action) {
         TeachingClassStatus from = teachingClass.getStatus();
         if (from == null) {
-            throw new BizException(ErrorCode.PARAM_ERROR, "Current status is null");
+            throw new BizException(ErrorCode.PARAM_ERROR, "教学班状态缺失");
         }
 
         switch (action) {
             case PUBLISH:
                 if (from != TeachingClassStatus.DRAFT) {
-                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "Only DRAFT class can be published");
+                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "只有草稿教学班可以发布");
                 }
                 if (teachingClass.getCapacity() == null || teachingClass.getCapacity() <= 0) {
-                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "Capacity must be > 0 to publish");
+                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "发布时容量必须大于0");
                 }
                 if (schedules == null || schedules.isEmpty()) {
-                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "At least 1 schedule is required to publish");
+                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "发布前至少安排一个时段");
                 }
                 break;
             case CLOSE:
                 if (from != TeachingClassStatus.PUBLISHED) {
-                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "Only PUBLISHED class can be closed");
+                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "只有已发布教学班可以关闭");
                 }
                 break;
             case CANCEL:
-                if (from == TeachingClassStatus.CANCELLED) {
-                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "Class is already cancelled");
+                if (from != TeachingClassStatus.DRAFT && from != TeachingClassStatus.PUBLISHED) {
+                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "只有草稿或已发布教学班可以取消");
                 }
                 break;
             case ROLLBACK_DRAFT:
                 if (from != TeachingClassStatus.PUBLISHED) {
-                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "Only PUBLISHED class can be rolled back to DRAFT");
+                    throw new BizException(ErrorCode.TC_STATUS_INVALID, "只有已发布教学班可以退回草稿");
                 }
                 break;
             default:

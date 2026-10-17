@@ -52,9 +52,9 @@ public class CommandSupport {
     }
 
     public static long number(Map<String,Object> body, String key, long min, long max, Long fallback) {
-        if (body.get(key)==null && fallback!=null) return fallback;
         try {
-            long value = new BigDecimal(body.get(key).toString()).longValueExact();
+            Object raw=body.get(key)==null?fallback:body.get(key);
+            long value = new BigDecimal(raw.toString()).longValueExact();
             if (value<min || value>max) throw invalid(key);
             return value;
         } catch (NullPointerException | NumberFormatException | ArithmeticException e) { throw invalid(key); }

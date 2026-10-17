@@ -44,6 +44,7 @@ public class EnrollmentCommandService {
     /** 执行选课，返回落库后的选课记录视图 */
     @Transactional
     public Map<String, Object> doEnroll(Long studentId, Long teachingClassId, String source) {
+        if(jdbc.queryForList("SELECT id FROM teaching_class WHERE id=? AND deleted=0 FOR UPDATE",teachingClassId).isEmpty()) throw new BizException(ErrorCode.NOT_FOUND,"教学班不存在");
         lockActiveStudent(studentId);
         Map<String, Object> tc = loadTeachingClass(teachingClassId);
 
@@ -92,11 +93,11 @@ public class EnrollmentCommandService {
     /** 执行退课（幂等） */
     @Transactional
     public void doWithdraw(Long studentId, Long teachingClassId) {
-        lockActiveStudent(studentId);
-        // 与成绩发布统一先锁教学班、再锁选课记录，避免相反锁顺序。
+        // 与排课及成绩发布统一先锁教学班，再锁学生与选课记录。
         if (jdbc.queryForList("SELECT id FROM teaching_class WHERE id=? AND deleted=0 FOR UPDATE", teachingClassId).isEmpty()) {
             throw new BizException(ErrorCode.NOT_FOUND, "教学班不存在");
         }
+        lockActiveStudent(studentId);
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT id, status, credit, term_id FROM enrollment
                  WHERE student_id = ? AND teaching_class_id = ? AND deleted = 0

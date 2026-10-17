@@ -43,7 +43,8 @@ public class TeachingClassQueryService {
                    tc.start_week             AS startWeek,
                    tc.end_week               AS endWeek,
                    DATE_FORMAT(tc.open_class_date, '%Y-%m-%d') AS openClassDate,
-                   tc.status                 AS status
+                   tc.status                 AS status,
+                   tc.description            AS description
               FROM teaching_class tc
               JOIN course c        ON c.id = tc.course_id
               LEFT JOIN term t     ON t.id = tc.term_id

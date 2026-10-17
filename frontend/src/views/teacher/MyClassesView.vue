@@ -1,6 +1,6 @@
 <template>
   <PageContainer title="我的教学班" description="查看本人负责的课程、选课人数与成绩管理入口。">
-    <template #actions><UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" :loading="loading" @click="loadClasses()">刷新列表</UButton></template>
+    <template #actions><UButton to="/teacher/manage">维护教学班</UButton><UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" :loading="loading" @click="loadClasses()">刷新列表</UButton></template>
     <div class="space-y-5">
       <p class="text-sm text-(--ui-text-muted)">选课人数自动同步；进入选课名单可查看学生变化。</p>
       <p v-if="syncMessage" role="status" class="text-sm">{{ syncMessage }}</p>
