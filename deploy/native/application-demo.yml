@@ -1,0 +1,43 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8081}
+  forward-headers-strategy: framework
+
+spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: jdbc:mysql://${CSMS_DB_HOST:127.0.0.1}:${CSMS_DB_PORT:3307}/${CSMS_DB_NAME:csms_demo}?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${CSMS_DB_USERNAME}
+    password: ${CSMS_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 6
+      minimum-idle: 1
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+
+csms:
+  jwt:
+    secret: ${CSMS_JWT_SECRET}
+
+logging:
+  file:
+    name: /var/log/csms/backend.log
+  level:
+    com.csms: info
+    org.springframework.web: info
+    org.springframework.security: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

@@ -1,0 +1,18 @@
+# Dedicated instance; never replace an existing system MySQL configuration.
+[mysqld]
+basedir=/opt/csms/mysql
+datadir=/var/lib/csms-mysql
+socket=/run/csms-mysql/mysql.sock
+pid-file=/run/csms-mysql/mysql.pid
+port=3307
+bind-address=127.0.0.1
+mysqlx=0
+skip-name-resolve
+skip-log-bin
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+innodb-buffer-pool-size=128M
+max-connections=30
+local-infile=0
+secure-file-priv=NULL
+log-error=/var/log/csms-mysql/mysql.log

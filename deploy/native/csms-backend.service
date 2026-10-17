@@ -1,0 +1,30 @@
+[Unit]
+Description=CSMS course management backend
+After=network.target csms-mysql.service
+Requires=csms-mysql.service
+StartLimitIntervalSec=120
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=csms
+Group=csms
+WorkingDirectory=/opt/csms/current
+Environment=SPRING_PROFILES_ACTIVE=demo
+Environment=SPRING_CONFIG_ADDITIONAL_LOCATION=file:/etc/csms/application-demo.yml
+EnvironmentFile=/etc/csms/backend.env
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/csms/current/app.jar
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+LogsDirectory=csms
+LogsDirectoryMode=0750
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/csms
+
+[Install]
+WantedBy=multi-user.target
