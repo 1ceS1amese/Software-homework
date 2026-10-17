@@ -1,0 +1,86 @@
+# Include in the existing nginx http block via a separate vhost file.
+# Replace only __PUBLIC_IP__ and __BACKEND_PORT__; preserve nginx $variables.
+limit_req_zone $binary_remote_addr zone=csms_login:1m rate=10r/m;
+
+map $uri $csms_cache_control {
+    default "no-store";
+    ~^/assets/ "public, max-age=31536000, immutable";
+}
+
+server {
+    listen 80;
+    server_name __PUBLIC_IP__;
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name __PUBLIC_IP__;
+    root /opt/csms/current/frontend;
+    index index.html;
+    server_tokens off;
+    proxy_cache off;
+
+    ssl_certificate /etc/csms/tls/fullchain.pem;
+    ssl_certificate_key /etc/csms/tls/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:CSMS_SSL:1m;
+    ssl_session_timeout 1d;
+
+    client_max_body_size 5m;
+    access_log /var/log/csms/nginx-access.log;
+    error_log /var/log/csms/nginx-error.log warn;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Cache-Control $csms_cache_control always;
+
+    # The proxy owns these policies; suppress duplicate upstream headers.
+    proxy_hide_header X-Content-Type-Options;
+    proxy_hide_header X-Frame-Options;
+    proxy_hide_header Referrer-Policy;
+    proxy_hide_header Cache-Control;
+    proxy_hide_header Pragma;
+    proxy_hide_header Expires;
+    # Private-CA demo clients must establish trust before a persistent policy.
+    proxy_hide_header Strict-Transport-Security;
+
+    location = /csms-ca.crt {
+        alias /etc/csms/tls/ca.crt;
+        default_type application/x-x509-ca-cert;
+    }
+
+    location = /api/auth/login {
+        limit_req zone=csms_login burst=10 nodelay;
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:__BACKEND_PORT__/auth/login;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:__BACKEND_PORT__/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location /assets/ {
+        try_files $uri =404;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
