@@ -18,9 +18,11 @@ import java.util.Map;
 public class BaseDataController {
 
     private final BaseDataQueryService queryService;
+    private final com.csms.base.service.ConfigCommandService configs;
 
-    public BaseDataController(BaseDataQueryService queryService) {
+    public BaseDataController(BaseDataQueryService queryService, com.csms.base.service.ConfigCommandService configs) {
         this.queryService = queryService;
+        this.configs=configs;
     }
 
     // —— B-01 院系 ——
@@ -71,20 +73,21 @@ public class BaseDataController {
     }
 
     // —— B-22 修改系统参数（仅管理员，且仅 editable=1 的项） ——
-    @PutMapping("/configs/{id}")
-    public ApiResponse<Void> updateConfig(@PathVariable Long id, @RequestBody ConfigUpdateRequest request) {
+    @PutMapping("/configs/{key}")
+    public ApiResponse<Void> updateConfig(@PathVariable String key, @RequestBody ConfigUpdateRequest request) {
         com.csms.common.context.CurrentUserHolder.UserContext me =
                 com.csms.common.context.CurrentUserHolder.get();
         if (me == null || !"ADMIN".equals(me.getRole())) {
             throw new com.csms.common.error.BizException(
                     com.csms.common.error.ErrorCode.FORBIDDEN, "只有管理员可以修改系统参数");
         }
-        queryService.updateConfig(id, request == null ? null : request.getConfigValue());
+        configs.update(key, request == null ? null : request.getConfigValue(),request==null?null:request.getRelatedValues());
         return ApiResponse.success();
     }
 
     @lombok.Data
     public static class ConfigUpdateRequest {
         private String configValue;
+        private Map<String,String> relatedValues;
     }
 }

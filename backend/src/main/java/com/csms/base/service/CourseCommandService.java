@@ -34,7 +34,9 @@ public class CourseCommandService {
                   FROM course WHERE id = ? AND deleted = 0
                 """, id);
         if (rows.isEmpty()) throw new BizException(ErrorCode.NOT_FOUND, "课程不存在");
-        return rows.get(0);
+        var result=rows.get(0);
+        result.put("prereqs",jdbc.queryForList("SELECT prereq_course_id AS prereqCourseId,requirement FROM course_prereq WHERE course_id=?",id));
+        return result;
     }
 
     @Transactional

@@ -135,7 +135,8 @@ public class BaseDataQueryService {
                        c.course_type AS courseType,
                        c.dept_id AS deptId, d.name AS deptName,
                        c.major_id AS majorId, m.name AS majorName,
-                       c.description AS description, c.status AS status
+                       c.description AS description, c.status AS status,
+                       (SELECT GROUP_CONCAT(p.name ORDER BY p.course_code SEPARATOR '、') FROM course_prereq cp JOIN course p ON p.id=cp.prereq_course_id WHERE cp.course_id=c.id AND p.deleted=0) AS prereqNames
                   FROM course c
                   LEFT JOIN dept d  ON d.id = c.dept_id
                   LEFT JOIN major m ON m.id = c.major_id
@@ -180,16 +181,4 @@ public class BaseDataQueryService {
                 """);
     }
 
-    /** 修改系统参数（仅 editable=1 的项可改） */
-    public void updateConfig(Long id, String value) {
-        List<Integer> editable = jdbc.query("SELECT editable FROM sys_config WHERE id = ?",
-                (rs, rowNum) -> rs.getInt(1), id);
-        if (editable.isEmpty()) {
-            throw new BizException(ErrorCode.NOT_FOUND, "系统参数不存在");
-        }
-        if (editable.get(0) == 0) {
-            throw new BizException(ErrorCode.SYS_CONFIG_READONLY);
-        }
-        jdbc.update("UPDATE sys_config SET config_value = ? WHERE id = ?", value, id);
-    }
 }

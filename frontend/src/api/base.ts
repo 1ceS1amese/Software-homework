@@ -129,7 +129,7 @@ export function getConfigs() {
   })
 }
 
-export function updateConfig(id: number, configValue: string) {
+export function updateConfig(id: number | string, configValue: string) {
   return request<void>({
     url: `/configs/${id}`,
     method: 'PUT',

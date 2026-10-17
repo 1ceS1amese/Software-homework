@@ -1,0 +1,51 @@
+import { expect, test } from '@playwright/test'
+import { api, database, login } from './helpers'
+
+test('REL-04 页面先修维护防环与参数类型、权重原子性', async ({ page }, info) => {
+  await login(page, 'admin')
+  const prefix = `RULE-${info.project.name}-${Date.now() % 1000000}`
+  const course = { name: '先修验收', credit: 2, creditHours: 32, courseType: 'ELECTIVE', deptId: 1 }
+  const a = (await api(page, '/courses', 'POST', { ...course, courseCode: prefix + 'A' })).body.data.id
+  const b = (await api(page, '/courses', 'POST', { ...course, courseCode: prefix + 'B', name: '先修B' })).body.data.id
+  const c = (await api(page, '/courses', 'POST', { ...course, courseCode: prefix + 'C' })).body.data.id
+  await page.goto('/admin/courses')
+  await page.getByPlaceholder('搜索课程代码或名称').fill(prefix + 'A')
+  await page.getByRole('button', { name: '查询', exact: true }).click()
+  await page.getByRole('row').filter({ hasText: prefix + 'A' }).getByRole('button', { name: '先修课程' }).click()
+  const dialog = page.getByRole('dialog', { name: '维护先修课程' })
+  await dialog.getByLabel('搜索先修候选').fill(prefix + 'B')
+  await dialog.getByRole('button', { name: '查询先修候选' }).click()
+  await dialog.getByLabel('先修课程', { exact: true }).selectOption(String(b))
+  await dialog.getByRole('button', { name: '添加先修要求' }).click()
+  await expect(dialog.getByRole('listitem')).toContainText('先修B')
+  expect(database(`SELECT COUNT(*) FROM course_prereq WHERE course_id=${a} AND prereq_course_id=${b}`)).toBe('1')
+  expect((await api(page, `/courses/${b}/prereqs`, 'POST', { prereqCourseId: a })).body.code).toBe(30501)
+  expect((await api(page, `/courses/${a}/prereqs`, 'POST', { prereqCourseId: a })).body.code).toBe(30501)
+  expect((await api(page, `/courses/${b}/prereqs`, 'POST', { prereqCourseId: c })).body.code).toBe(0)
+  expect((await api(page, `/courses/${c}/prereqs`, 'POST', { prereqCourseId: a })).body.code).toBe(30501)
+  expect((await api(page, `/courses/${b}`, 'DELETE')).status).toBe(409)
+  await dialog.getByRole('button', { name: '移除' }).click()
+  await expect(dialog.getByRole('listitem')).toHaveCount(0)
+  expect(database(`SELECT COUNT(*) FROM course_prereq WHERE course_id=${a}`)).toBe('0')
+  expect((await api(page, `/courses/${b}/prereqs/${c}`, 'DELETE')).body.code).toBe(0)
+  const concurrent = await Promise.all([api(page, `/courses/${a}/prereqs`, 'POST', { prereqCourseId: b }), api(page, `/courses/${b}/prereqs`, 'POST', { prereqCourseId: a })])
+  expect(concurrent.map(r => r.body.code).sort((x, y) => x - y)).toEqual([0, 30501])
+  if (concurrent[0].body.code === 0) await api(page, `/courses/${a}/prereqs/${b}`, 'DELETE')
+  else await api(page, `/courses/${b}/prereqs/${a}`, 'DELETE')
+  database(`INSERT INTO sys_config(config_key,config_value,value_type,editable) VALUES('${prefix}','1','NUMBER',0)`)
+  expect((await api(page, `/configs/${prefix}`, 'PUT', { configValue: '2' })).body.code).toBe(30601)
+  database(`DELETE FROM sys_config WHERE config_key='${prefix}'`)
+  for (const value of ['oops', '-1', '101'])
+    expect((await api(page, '/configs/grade.pass_score', 'PUT', { configValue: value })).body.code).toBe(10000)
+  expect(database("SELECT config_value FROM sys_config WHERE config_key='grade.pass_score'")).toBe('60')
+  expect((await api(page, '/configs/grade.point.mapping_mode', 'PUT', { configValue: 'SECTION' })).status).toBe(400)
+  expect((await api(page, '/configs/grade.weight.regular', 'PUT', { configValue: '0.9' })).status).toBe(400)
+  await page.goto('/admin/configs')
+  await expect(page.getByRole('button', { name: '保存成绩权重' })).toBeEnabled()
+  await page.getByLabel('平时权重', { exact: true }).fill('0.2')
+  await page.getByLabel('期末权重', { exact: true }).fill('0.5')
+  await page.getByRole('button', { name: '保存成绩权重' }).click()
+  await expect.poll(() => database("SELECT GROUP_CONCAT(config_value ORDER BY id) FROM sys_config WHERE config_key LIKE 'grade.weight.%'" )).toBe('0.2,0.3,0.5')
+  await page.reload(); await expect(page.getByLabel('平时权重', { exact: true })).toHaveValue('0.2')
+  expect((await api(page, '/configs/grade.weight.regular', 'PUT', { configValue: '0.3', relatedValues: { 'grade.weight.midterm': '0.3', 'grade.weight.final': '0.4' } })).body.code).toBe(0)
+})

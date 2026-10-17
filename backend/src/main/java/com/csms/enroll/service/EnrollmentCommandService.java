@@ -193,7 +193,9 @@ public class EnrollmentCommandService {
         Map<String, Object> term = loadTerm(termId);
         LocalDate today = LocalDate.now();
 
-        Object withdrawEnd = term.get("withdraw_end");
+        var modes=jdbc.queryForList("SELECT config_value FROM sys_config WHERE config_key='enroll.withdraw_deadline_mode'");
+        boolean custom=!modes.isEmpty() && "CUSTOM".equals(modes.get(0).get("config_value"));
+        Object withdrawEnd = term.get(custom ? "withdraw_end" : "enroll_end");
         if (withdrawEnd == null) {
             withdrawEnd = term.get("enroll_end");
         }

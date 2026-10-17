@@ -12,7 +12,7 @@
           <template #courseCode-cell="{ row }"><span class="font-mono font-semibold">{{ row.original.courseCode }}</span></template>
           <template #type-cell="{ row }"><UBadge :color="row.original.courseType === 'REQUIRED' ? 'primary' : 'neutral'" variant="subtle">{{ typeLabel(row.original.courseType) }}</UBadge></template>
           <template #prereqNames-cell="{ row }">{{ row.original.prereqNames || '无' }}</template>
-          <template #actions-cell="{ row }"><div class="flex gap-2"><UButton size="sm" color="neutral" variant="outline" @click="editCourse(row.original)">编辑</UButton><UButton size="sm" color="error" variant="outline" @click="deleting = row.original">删除</UButton></div></template>
+          <template #actions-cell="{ row }"><div class="flex gap-2"><UButton size="sm" color="neutral" variant="outline" @click="editCourse(row.original)">编辑</UButton><UButton size="sm" color="neutral" variant="outline" @click="prereqCourse = row.original">先修课程</UButton><UButton size="sm" color="error" variant="outline" @click="deleting = row.original">删除</UButton></div></template>
         </UTable>
         <p v-if="!loading && !error && !courses.length" class="p-8 text-center text-sm text-(--ui-text-muted)">暂无课程。</p>
         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-(--ui-border) p-4 text-sm">
@@ -43,6 +43,7 @@
     <template #body><p>确定删除“{{ deleting?.name }}”吗？</p><UAlert v-if="saveError" color="error" :title="saveError" /></template>
     <template #footer><UButton color="neutral" variant="outline" :disabled="saving" @click="deleting = null">取消</UButton><UButton color="error" :loading="saving" @click="remove">确认删除</UButton></template>
   </UModal>
+  <CoursePrerequisites v-model:course="prereqCourse" @changed="loadData" />
 </template>
 
 <script setup lang="ts">
@@ -52,6 +53,8 @@ import { createCourse, updateCourse, deleteCourse, getCourses, getDepts, getMajo
 import type { CourseItem, DeptItem, MajorItem } from '@/api/types'
 import { useToast } from '@nuxt/ui/composables'
 import PageContainer from '@/components/PageContainer.vue'
+import CoursePrerequisites from '@/components/CoursePrerequisites.vue'
+const prereqCourse = ref<CourseItem | null>(null)
 const columns: TableColumn<CourseItem>[] = [
   { accessorKey: 'courseCode', header: '课程代码' }, { accessorKey: 'name', header: '课程名称' },
   { accessorKey: 'credit', header: '学分' }, { accessorKey: 'creditHours', header: '学时' },
