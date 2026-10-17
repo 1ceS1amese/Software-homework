@@ -2,6 +2,7 @@
   <PageContainer :title="`教学班成绩 · #${classId}`" description="总评以服务端配置计算；预览仅供核对，发布后成绩将锁定。">
     <template #actions>
       <UButton to="/teacher/classes" color="neutral" variant="outline" icon="i-lucide-arrow-left">返回列表</UButton>
+      <UButton :disabled="!canEdit" variant="outline" @click="importOpen = true">CSV导入</UButton>
       <UButton :disabled="!canEdit || !weights" :loading="saving" @click="saveDraft">暂存草稿</UButton>
       <UButton color="success" :disabled="!canPublish" :loading="publishing" @click="confirmOpen = true">正式发布</UButton>
     </template>
@@ -28,6 +29,7 @@
   <UModal v-model:open="confirmOpen" title="确认发布成绩" description="发布后将向学生公示并锁定，只有教务管理员可以解锁。">
     <template #footer><UButton color="neutral" variant="outline" @click="confirmOpen = false">取消</UButton><UButton color="success" :loading="publishing" @click="publish">确认发布</UButton></template>
   </UModal>
+  <GradeImportDialog v-model:open="importOpen" :class-id="classId" :grades="grades" @imported="loadData" />
 </template>
 
 <script setup lang="ts">
@@ -39,6 +41,8 @@ import { getClassGrades, publishGrades, saveGrades } from '@/api/grades'
 import { getConfigs } from '@/api/base'
 import type { GradeItem } from '@/api/types'
 import PageContainer from '@/components/PageContainer.vue'
+import GradeImportDialog from '@/components/GradeImportDialog.vue'
+const importOpen = ref(false)
 
 type Weights = { regular: number; midterm: number; final: number }
 const columns: TableColumn<GradeItem>[] = [

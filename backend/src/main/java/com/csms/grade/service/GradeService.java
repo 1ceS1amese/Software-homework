@@ -259,14 +259,14 @@ public class GradeService {
 
     // —————————————————— 内部 ——————————————————
 
-    private void lockClass(Long teachingClassId) {
+    void lockClass(Long teachingClassId) {
         if (jdbc.queryForList("SELECT id FROM teaching_class WHERE id=? AND deleted=0 FOR UPDATE", teachingClassId).isEmpty()) {
             throw new BizException(ErrorCode.NOT_FOUND, "教学班不存在");
         }
     }
 
     /** 教学班成绩必须处于可编辑状态 */
-    private void assertEditable(Long teachingClassId) {
+    void assertEditable(Long teachingClassId) {
         Integer published = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM grade
                  WHERE teaching_class_id = ? AND status = 'PUBLISHED' AND deleted=0
@@ -276,7 +276,7 @@ public class GradeService {
         }
     }
 
-    private void validate(BigDecimal score) {
+    void validate(BigDecimal score) {
         if (score == null) {
             return;
         }
@@ -340,7 +340,7 @@ public class GradeService {
         return values.isEmpty() || values.get(0) == null ? defaultValue : values.get(0);
     }
 
-    private Long toLong(Object value) {
+    Long toLong(Object value) {
         if (value == null) {
             return null;
         }
@@ -351,7 +351,7 @@ public class GradeService {
         }
     }
 
-    private BigDecimal toDecimal(Object value) {
+    BigDecimal toDecimal(Object value) {
         if (value == null) {
             return null;
         }

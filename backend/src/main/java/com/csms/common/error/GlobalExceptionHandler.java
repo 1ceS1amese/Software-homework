@@ -40,6 +40,11 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MultipartException.class)
+    public ResponseEntity<ApiResponse<?>> handleUpload(org.springframework.web.multipart.MultipartException e) {
+        return ResponseEntity.badRequest().body(ApiResponse.error(ErrorCode.GRADE_IMPORT_INVALID.getCode(), "上传格式错误或超出限制，请使用1MB以内的CSV文件"));
+    }
+
     private HttpStatus statusOf(ErrorCode code) {
         return switch (code) {
             case AUTH_BAD_CREDENTIALS, AUTH_LOCKED, AUTH_EXPIRED, AUTH_INVALID_TOKEN -> HttpStatus.UNAUTHORIZED;
