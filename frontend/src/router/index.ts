@@ -133,6 +133,10 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, roles: ['ADMIN'], layout: 'AdminLayout', nav: true, icon: 'i-lucide-chart-column', title: '统计报表' },
   },
   {
+    path: '/admin/grades', name: 'AdminGrades', component: () => import('@/views/admin/GradeUnlockView.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN'], nav: true, title: '成绩管理与解锁', icon: 'i-lucide-chart-no-axes-column' },
+  },
+  {
     path: '/admin/audit-logs',
     name: 'AdminAuditLogs',
     component: () => import('@/views/admin/AuditLogView.vue'),

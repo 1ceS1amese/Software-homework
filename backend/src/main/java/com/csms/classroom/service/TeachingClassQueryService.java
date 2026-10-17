@@ -44,7 +44,10 @@ public class TeachingClassQueryService {
                    tc.end_week               AS endWeek,
                    DATE_FORMAT(tc.open_class_date, '%Y-%m-%d') AS openClassDate,
                    tc.status                 AS status,
-                   tc.description            AS description
+                   tc.description            AS description,
+                   (SELECT COUNT(*) FROM grade g WHERE g.teaching_class_id=tc.id AND g.deleted=0 AND g.status='PUBLISHED') AS publishedGradeCount,
+                   CASE WHEN EXISTS(SELECT 1 FROM grade g WHERE g.teaching_class_id=tc.id AND g.deleted=0 AND g.status='PUBLISHED') THEN 'PUBLISHED'
+                        WHEN EXISTS(SELECT 1 FROM grade g WHERE g.teaching_class_id=tc.id AND g.deleted=0) THEN 'DRAFT' ELSE 'EMPTY' END AS gradeStatus
               FROM teaching_class tc
               JOIN course c        ON c.id = tc.course_id
               LEFT JOIN term t     ON t.id = tc.term_id

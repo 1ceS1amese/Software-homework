@@ -170,6 +170,8 @@ export interface TeachingClassItem {
   className: string
   description?: string
   capacity: number
+  gradeStatus?: 'EMPTY' | 'DRAFT' | 'PUBLISHED'
+  publishedGradeCount?: number
   enrolledCount: number
   credit: number
   location?: string
