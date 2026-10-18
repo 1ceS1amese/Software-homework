@@ -31,8 +31,8 @@ class EnrollmentRuleCheckerTest {
     @Test
     void overlappingClassReturnsReadableConflict() {
         jdbc.rows = List.of(
-                Map.of("course_name", "数据结构", "day_of_week", 1,
-                        "start_section", 3, "end_section", 4));
+                Map.of("courseName", "数据结构", "dayOfWeek", 1,
+                        "startSection", 3, "endSection", 4));
         BizException error = assertThrows(BizException.class, () -> rules.checkTimeConflict(3L, 9L));
         assertEquals(ErrorCode.ENROLL_TIME_CONFLICT, error.getErrorCode());
         assertTrue(error.getMessage().contains("数据结构"));

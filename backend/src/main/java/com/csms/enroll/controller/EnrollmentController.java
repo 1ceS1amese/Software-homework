@@ -30,16 +30,21 @@ public class EnrollmentController {
 
     /** E-01 选课 */
     @PostMapping
-    public ApiResponse<Map<String, Object>> enroll(@Valid @RequestBody EnrollRequest request) {
+    public ApiResponse<Map<String, Object>> enroll(@Valid @RequestBody EnrollRequest request, jakarta.servlet.http.HttpServletRequest http) {
         CurrentUserHolder.UserContext me = requireStudent();
-        return ApiResponse.success(enrollmentService.enroll(me.getId(), request.getTeachingClassId()));
+        var result=enrollmentService.enroll(me.getId(), request.getTeachingClassId());
+        return ApiResponse.success(http.getRequestURI().startsWith("/api/v1/")?enrollmentService.standardResult(result):result);
     }
 
     /** E-02 退课（按教学班 ID，幂等） */
     @DeleteMapping("/{teachingClassId}")
-    public ApiResponse<Void> withdraw(@PathVariable Long teachingClassId) {
+    public ApiResponse<?> withdraw(@PathVariable Long teachingClassId, jakarta.servlet.http.HttpServletRequest request) {
         CurrentUserHolder.UserContext me = requireStudent();
-        enrollmentService.withdraw(me.getId(), teachingClassId);
+        if(request.getRequestURI().startsWith("/api/v1/")) {
+            var result=enrollmentService.withdrawRelation(me.getId(),teachingClassId);
+            return new ApiResponse<>(0,Boolean.TRUE.equals(result.remove("alreadyWithdrawn"))?"已退课":"退课成功",result);
+        }
+        else enrollmentService.withdraw(me.getId(), teachingClassId);
         return ApiResponse.success();
     }
 

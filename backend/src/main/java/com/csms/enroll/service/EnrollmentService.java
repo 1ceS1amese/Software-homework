@@ -76,7 +76,8 @@ public class EnrollmentService {
     }
 
     /** E-03 我的选课 */
-    public List<Map<String, Object>> myEnrollments(Long studentId, Long termId) {
+    public List<Map<String,Object>> myEnrollments(Long studentId,Long termId) { return myEnrollments(studentId,termId,null,null,null); }
+    public List<Map<String, Object>> myEnrollments(Long studentId, Long termId,String status,Long courseId,String keyword) {
         StringBuilder sql = new StringBuilder("""
                 SELECT e.id                        AS id,
                        e.student_id                AS studentId,
@@ -96,7 +97,7 @@ public class EnrollmentService {
                   JOIN teaching_class tc ON tc.id = e.teaching_class_id
                   JOIN course c          ON c.id = e.course_id
                   LEFT JOIN term t       ON t.id = e.term_id
-                 WHERE e.student_id = ? AND e.deleted = 0 AND e.status IN ('ENROLLED', 'COMPLETED')
+                 WHERE e.student_id = ? AND e.deleted = 0
                 """);
         List<Object> args = new ArrayList<>();
         args.add(studentId);
@@ -104,7 +105,14 @@ public class EnrollmentService {
             sql.append(" AND e.term_id = ?");
             args.add(termId);
         }
-        sql.append(" ORDER BY e.enrolled_at DESC");
+        if(status==null || status.isBlank()) sql.append(" AND e.status IN ('ENROLLED','COMPLETED')");
+        else {
+            if(!List.of("ENROLLED","COMPLETED","WITHDRAWN").contains(status)) throw new BizException(ErrorCode.PARAM_ERROR,"选课状态无效");
+            sql.append(" AND e.status=?");args.add(status);
+        }
+        if(courseId!=null) { sql.append(" AND e.course_id=?");args.add(courseId); }
+        if(keyword!=null&&!keyword.isBlank()) { sql.append(" AND (c.name LIKE ? OR c.course_code LIKE ? OR tc.class_name LIKE ?)");for(int i=0;i<3;i++) args.add("%"+keyword.trim()+"%"); }
+        sql.append(" ORDER BY e.enrolled_at DESC,e.id DESC");
 
         List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
         rows.forEach(this::attachSchedules);
@@ -115,6 +123,8 @@ public class EnrollmentService {
     public List<Map<String, Object>> mySchedule(Long studentId, Long termId) {
         StringBuilder sql = new StringBuilder("""
                 SELECT tc.id              AS id,
+                       tc.id                     AS teachingClassId,
+                       e.id                      AS enrollmentId,
                        tc.course_id       AS courseId,
                        c.course_code      AS courseCode,
                        c.name             AS courseName,
@@ -151,57 +161,29 @@ public class EnrollmentService {
 
     /** E-05 选课预检：只读校验，不占名额 */
     public Map<String, Object> precheck(Long studentId, Long teachingClassId) {
-        List<String> reasons = new ArrayList<>();
-        boolean eligible = true;
-
-        List<Map<String, Object>> tcRows = jdbc.queryForList("""
-                SELECT id, course_id, term_id, credit, capacity, enrolled_count, status
-                  FROM teaching_class WHERE id = ? AND deleted = 0
-                """, teachingClassId);
-        if (tcRows.isEmpty()) {
-            return result(false, List.of("教学班不存在"));
-        }
-        Map<String, Object> tc = tcRows.get(0);
-
-        if (!"PUBLISHED".equals(tc.get("status"))) {
-            reasons.add("该教学班未开放选课");
-        }
-        int capacity = ((Number) tc.get("capacity")).intValue();
-        int enrolled = ((Number) tc.get("enrolled_count")).intValue();
-        if (enrolled >= capacity) {
-            reasons.add("名额已满");
-        }
-
-        Long termId = ((Number) tc.get("term_id")).longValue();
-        Long courseId = ((Number) tc.get("course_id")).longValue();
-        BigDecimal credit = (BigDecimal) tc.get("credit");
-
-        eligible &= tryCheck(reasons, () -> ruleChecker.checkDuplicate(studentId, teachingClassId));
-        eligible &= tryCheck(reasons, () -> ruleChecker.checkTimeConflict(studentId, teachingClassId));
-        eligible &= tryCheck(reasons, () -> ruleChecker.checkPrerequisite(studentId, courseId));
-        eligible &= tryCheck(reasons, () -> ruleChecker.checkCreditMax(studentId, termId, credit));
-
-        if (!reasons.isEmpty()) {
-            eligible = false;
-        }
-        return result(eligible, reasons);
-    }
-
-    private boolean tryCheck(List<String> reasons, Runnable check) {
         try {
-            check.run();
-            return true;
-        } catch (BizException e) {
-            reasons.add(e.getMessage());
-            return false;
+            commandService.validateEnrollment(studentId,teachingClassId);
+            return Map.of("canEnroll",true,"reasonCode",0,"reason","可以选课","conflicts",List.of(),"eligible",true,"reasons",List.of());
+        } catch(BizException e) {
+            return Map.of("canEnroll",false,"reasonCode",e.getErrorCode().getCode(),"reason",e.getMessage(),
+                "conflicts",e.getErrorCode()==ErrorCode.ENROLL_TIME_CONFLICT?ruleChecker.conflicts(studentId,teachingClassId):List.of(),"eligible",false,"reasons",List.of(e.getMessage()));
         }
     }
 
-    private Map<String, Object> result(boolean eligible, List<String> reasons) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("eligible", eligible);
-        map.put("reasons", reasons);
-        return map;
+    public Map<String,Object> withdrawRelation(Long studentId,Long enrollmentId) {
+        var rows=jdbc.queryForList("SELECT student_id,teaching_class_id,status FROM enrollment WHERE id=? AND deleted=0",enrollmentId);
+        if(rows.isEmpty()) throw new BizException(ErrorCode.NOT_FOUND,"选课记录不存在");
+        if(((Number)rows.get(0).get("student_id")).longValue()!=studentId) throw new BizException(ErrorCode.FORBIDDEN,"只能退选本人的课程");
+        Long classId=((Number)rows.get(0).get("teaching_class_id")).longValue();
+        withdraw(studentId,classId);
+        var result=seatSnapshot(classId);result.put("alreadyWithdrawn","WITHDRAWN".equals(rows.get(0).get("status")));return result;
+    }
+
+    public Map<String,Object> seatSnapshot(Long classId) {
+        return jdbc.queryForMap("SELECT id,id AS teachingClassId,enrolled_count AS enrolledCount,capacity,capacity-enrolled_count AS remaining FROM teaching_class WHERE id=?",classId);
+    }
+    public Map<String,Object> standardResult(Map<String,Object> enrollment) {
+        return Map.of("enrollment",enrollment,"teachingClass",seatSnapshot(((Number)enrollment.get("teachingClassId")).longValue()));
     }
 
     /** E-06 教学班选课名单（教师 / 管理员） */
@@ -214,11 +196,14 @@ public class EnrollmentService {
     }
 
     public List<Map<String, Object>> classStudents(Long teachingClassId) {
-        return jdbc.queryForList("""
+        var rows = jdbc.queryForList("""
                 SELECT e.id                        AS id,
                        e.student_id                AS studentId,
                        u.username                  AS studentUsername,
                        u.real_name                 AS studentName,
+                       u.major_id                  AS majorId,
+                       m.name                      AS majorName,
+                       e.status                    AS enrollStatus,
                        e.teaching_class_id         AS teachingClassId,
                        tc.class_name               AS className,
                        e.course_id                 AS courseId,
@@ -231,11 +216,14 @@ public class EnrollmentService {
                        e.source                    AS source
                   FROM enrollment e
                   JOIN sys_user u        ON u.id = e.student_id
+                  LEFT JOIN major m ON m.id=u.major_id
                   JOIN teaching_class tc ON tc.id = e.teaching_class_id
                   JOIN course c          ON c.id = e.course_id
                  WHERE e.teaching_class_id = ? AND e.status IN ('ENROLLED', 'COMPLETED') AND e.deleted = 0
                  ORDER BY u.username
                 """, teachingClassId);
+        rows.forEach(row->row.put("hasConflict",!ruleChecker.conflicts(((Number)row.get("studentId")).longValue(),teachingClassId).isEmpty()));
+        return rows;
     }
 
     private void attachSchedules(Map<String, Object> row) {

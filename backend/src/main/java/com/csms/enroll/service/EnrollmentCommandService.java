@@ -45,7 +45,6 @@ public class EnrollmentCommandService {
     @Transactional
     public Map<String, Object> doEnroll(Long studentId, Long teachingClassId, String source) {
         if(jdbc.queryForList("SELECT id FROM teaching_class WHERE id=? AND deleted=0 FOR UPDATE",teachingClassId).isEmpty()) throw new BizException(ErrorCode.NOT_FOUND,"教学班不存在");
-        lockActiveStudent(studentId);
         Map<String, Object> tc = loadTeachingClass(teachingClassId);
 
         String status = (String) tc.get("status");
@@ -58,6 +57,7 @@ public class EnrollmentCommandService {
         BigDecimal credit = (BigDecimal) tc.get("credit");
 
         checkTermWindow(termId);
+        lockActiveStudent(studentId);
 
         ruleChecker.checkDuplicate(studentId, teachingClassId);
         ruleChecker.checkTimeConflict(studentId, teachingClassId);
@@ -87,6 +87,7 @@ public class EnrollmentCommandService {
         var enrolled = loadEnrollment(studentId, teachingClassId);
         audit.record("ENROLL", "ENROLL", "enrollment", ((Number) enrolled.get("id")).longValue(),
                 null, Map.of("studentId", studentId, "teachingClassId", teachingClassId, "source", source, "status", "ENROLLED"));
+        enrolled.put("remainingSeats", jdbc.queryForObject("SELECT capacity-enrolled_count FROM teaching_class WHERE id=?",Integer.class,teachingClassId));
         return enrolled;
     }
 
@@ -140,6 +141,21 @@ public class EnrollmentCommandService {
                 Map.of("status", status), Map.of("status", "WITHDRAWN", "teachingClassId", teachingClassId));
     }
 
+    /** 与写入保持相同校验顺序；不加写锁、不占名额。 */
+    public void validateEnrollment(Long studentId,Long teachingClassId) {
+        var tc=loadTeachingClass(teachingClassId);
+        if(!"PUBLISHED".equals(tc.get("status"))) throw new BizException(ErrorCode.ENROLL_NOT_OPEN);
+        Long term=((Number)tc.get("term_id")).longValue();
+        checkTermWindow(term);
+        Integer active=jdbc.queryForObject("SELECT COUNT(*) FROM sys_user WHERE id=? AND deleted=0 AND status='ACTIVE' AND user_type='STUDENT'",Integer.class,studentId);
+        if(active==null||active!=1) throw new BizException(ErrorCode.ENROLL_ACCOUNT_ABNORMAL);
+        ruleChecker.checkDuplicate(studentId,teachingClassId);
+        ruleChecker.checkTimeConflict(studentId,teachingClassId);
+        ruleChecker.checkPrerequisite(studentId,((Number)tc.get("course_id")).longValue());
+        ruleChecker.checkCreditMax(studentId,term,(BigDecimal)tc.get("credit"));
+        if(((Number)tc.get("enrolled_count")).intValue()>=((Number)tc.get("capacity")).intValue()) throw new BizException(ErrorCode.ENROLL_FULL);
+    }
+
     // —————————————————— 内部辅助 ——————————————————
 
     private void lockActiveStudent(Long studentId) {
@@ -167,7 +183,7 @@ public class EnrollmentCommandService {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT id, code, name, enroll_start, enroll_end, withdraw_end, status
                   FROM term WHERE id = ? AND deleted = 0
-                """, termId);
+                """ + (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()?" FOR SHARE":""), termId);
         if (rows.isEmpty()) {
             throw new BizException(ErrorCode.NOT_FOUND, "学期不存在");
         }
@@ -177,6 +193,7 @@ public class EnrollmentCommandService {
     /** BR-02：必须在学期选课窗口内 */
     private void checkTermWindow(Long termId) {
         Map<String, Object> term = loadTerm(termId);
+        if(!"ENROLLING".equals(term.get("status"))) throw new BizException(ErrorCode.ENROLL_OUT_OF_TIME,"学期未开放选课");
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime start = toLocalDateTime(term.get("enroll_start"));
         LocalDateTime end = toLocalDateTime(term.get("enroll_end"));

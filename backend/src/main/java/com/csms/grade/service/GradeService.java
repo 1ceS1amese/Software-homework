@@ -61,6 +61,17 @@ public class GradeService {
                 """, teachingClassId);
     }
 
+    @Transactional
+    public void updateOne(Long id,Map<String,Object> patch,Long teacherId) {
+        var rows=jdbc.queryForList("SELECT teaching_class_id,enrollment_id FROM grade WHERE id=? AND deleted=0",id);
+        if(rows.isEmpty()) throw new BizException(ErrorCode.NOT_FOUND,"成绩不存在");
+        Long classId=((Number)rows.get(0).get("teaching_class_id")).longValue();
+        lockClass(classId);assertTeacherOwns(classId,teacherId,false);assertEditable(classId);
+        var before=jdbc.queryForMap("SELECT enrollment_id AS enrollmentId,regular_score AS regularScore,midterm_score AS midtermScore,final_score AS finalScore FROM grade WHERE id=? AND deleted=0 FOR UPDATE",id);
+        for(String key:List.of("regularScore","midtermScore","finalScore")) if(patch.containsKey(key)) before.put(key,patch.get(key));
+        saveDraft(classId,List.of(before));
+    }
+
     /** G-02 批量暂存成绩（整批成功或整批失败） */
     @Transactional
     public void saveDraft(Long teachingClassId, List<Map<String, Object>> items) {

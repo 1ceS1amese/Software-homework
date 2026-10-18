@@ -40,8 +40,17 @@ public class EnrollmentRuleChecker {
 
     /** BR-05：同一学生不可同时选上课时间重叠的两个教学班（同时考虑周次区间） */
     public void checkTimeConflict(Long studentId, Long teachingClassId) {
-        List<Map<String, Object>> conflicts = jdbc.queryForList("""
-                SELECT c.name AS course_name, s2.day_of_week, s2.start_section, s2.end_section
+        List<Map<String, Object>> conflicts = conflicts(studentId,teachingClassId);
+        if (!conflicts.isEmpty()) {
+            Map<String,Object> c=conflicts.get(0);
+            int day=((Number)c.get("dayOfWeek")).intValue();
+            throw new BizException(ErrorCode.ENROLL_TIME_CONFLICT,"与《"+c.get("courseName")+"》上课时间冲突（周"+WEEK_NAMES[day-1]+" 第"+c.get("startSection")+"-"+c.get("endSection")+"节）");
+        }
+    }
+
+    public List<Map<String,Object>> conflicts(Long studentId,Long teachingClassId) {
+        return jdbc.queryForList("""
+                SELECT DISTINCT e.teaching_class_id AS teachingClassId,c.name AS courseName, s2.day_of_week AS dayOfWeek, s2.start_section AS startSection, s2.end_section AS endSection
                   FROM class_schedule s1
                   JOIN class_schedule s2
                     ON s1.day_of_week = s2.day_of_week
@@ -56,18 +65,9 @@ public class EnrollmentRuleChecker {
                    AND e.status IN ('ENROLLED','COMPLETED')
                    AND e.deleted = 0
                   JOIN course c ON c.id = e.course_id
-                 WHERE s1.teaching_class_id = ?
-                 LIMIT 1
+                 WHERE s1.teaching_class_id = ? AND e.term_id=(SELECT term_id FROM teaching_class WHERE id=s1.teaching_class_id)
                 """, studentId, teachingClassId);
 
-        if (!conflicts.isEmpty()) {
-            Map<String, Object> c = conflicts.get(0);
-            int dow = ((Number) c.get("day_of_week")).intValue();
-            String week = (dow >= 1 && dow <= 7) ? WEEK_NAMES[dow - 1] : String.valueOf(dow);
-            throw new BizException(ErrorCode.ENROLL_TIME_CONFLICT, String.format(
-                    "与《%s》上课时间冲突（周%s 第%s-%s节）",
-                    c.get("course_name"), week, c.get("start_section"), c.get("end_section")));
-        }
     }
 
     /** BR-06：课程若配置了先修课，学生必须已 COMPLETED 且成绩及格 */
