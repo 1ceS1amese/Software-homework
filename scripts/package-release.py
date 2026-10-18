@@ -30,8 +30,8 @@ def main():
     run(['pnpm', 'build'], ROOT / 'frontend', env=env)
     output = ROOT / '.local/releases'
     output.mkdir(parents=True, exist_ok=True); output.chmod(0o700)
-    name = f'{version}-{source[:12]}'
-    archive = output / f'{name}.tar.gz'
+    release_name = f'{version}-{source[:12]}'
+    archive = output / f'{release_name}.tar.gz'
     if archive.exists(): raise SystemExit('同一源码发布包已存在；必须先核对旧产物，禁止静默覆盖。')
     with tempfile.TemporaryDirectory(prefix='package-', dir=output) as temp:
         package = Path(temp)
@@ -58,7 +58,7 @@ def main():
                     with file.open('rb') as stream: tar.addfile(info, stream)
     archive.chmod(0o600)
     digest=hashlib.sha256(archive.read_bytes()).hexdigest()
-    (output / f'{name}.sha256').write_text(f'{digest}  {archive.name}\n')
+    (output / f'{release_name}.sha256').write_text(f'{digest}  {archive.name}\n')
     print(f'发布包：{archive.name}，{len(files)} 个受清单保护文件，SHA-256 {digest}')
 
 if __name__ == '__main__': main()
