@@ -7,6 +7,8 @@ export function getAuditLogs(params?: {
   username?: string
   module?: string
   action?: string
+  targetType?: string
+  targetId?: number
   result?: string
   startTime?: string
   endTime?: string

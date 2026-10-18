@@ -5,13 +5,18 @@
         <UFormField label="操作人"><UInput v-model="query.username" placeholder="用户名" @keyup.enter="search" /></UFormField>
         <UFormField label="模块"><USelect v-model="query.module" :items="moduleOptions" class="w-38" /></UFormField>
         <UFormField label="结果"><USelect v-model="query.result" :items="resultOptions" class="w-32" /></UFormField>
+        <UFormField label="动作"><UInput v-model="query.action" placeholder="例如 LOGIN" /></UFormField>
+        <UFormField label="目标类型"><UInput v-model="query.targetType" placeholder="例如 sys_user" /></UFormField>
+        <UFormField label="目标 ID"><UInput v-model="query.targetId" type="number" min="1" /></UFormField>
+        <label class="text-sm">开始时间<input v-model="query.startTime" type="datetime-local" class="block rounded border p-2" /></label>
+        <label class="text-sm">结束时间<input v-model="query.endTime" type="datetime-local" class="block rounded border p-2" /></label>
         <UButton icon="i-lucide-search" :loading="loading" @click="search">查询</UButton>
       </div>
       <UAlert v-if="error" color="error" variant="soft" icon="i-lucide-circle-alert" title="审计日志加载失败" :description="error" />
       <div class="overflow-x-auto rounded-xl border border-(--ui-border) bg-(--ui-bg)">
         <UTable :data="logs" :columns="columns" :loading="loading" class="min-w-190">
           <template #result-cell="{ row }"><UBadge :color="row.original.result === 'SUCCESS' ? 'success' : 'error'" variant="subtle">{{ row.original.result === 'SUCCESS' ? '成功' : '失败' }}</UBadge></template>
-          <template #actions-cell="{ row }"><UButton size="sm" color="neutral" variant="outline" @click="selectedLog = row.original">详情</UButton></template>
+          <template #actions-cell="{ row }"><UButton size="sm" color="neutral" variant="outline" @click="showDetail(row.original.id)">详情</UButton></template>
         </UTable>
         <p v-if="!loading && !error && !logs.length" class="p-8 text-center text-sm text-(--ui-text-muted)">没有匹配的审计记录。</p>
         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-(--ui-border) p-4 text-sm">
@@ -25,6 +30,7 @@
     <template #body><div v-if="selectedLog" class="space-y-4 text-sm">
       <p><strong>操作人：</strong>{{ selectedLog.username || '—' }}</p>
       <p><strong>模块 / 动作：</strong>{{ selectedLog.module }} / {{ selectedLog.action }}</p>
+      <p><strong>追踪号：</strong>{{ selectedLog.traceId }}</p>
       <p><strong>时间：</strong>{{ selectedLog.createdAt }}</p>
       <div><strong>变更前</strong><pre class="mt-2 max-h-50 overflow-auto rounded-lg bg-(--ui-bg-muted) p-3 text-xs whitespace-pre-wrap">{{ selectedLog.beforeJson || '无' }}</pre></div>
       <div><strong>变更后</strong><pre class="mt-2 max-h-50 overflow-auto rounded-lg bg-(--ui-bg-muted) p-3 text-xs whitespace-pre-wrap">{{ selectedLog.afterJson || '无' }}</pre></div>
@@ -35,7 +41,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
-import { getAuditLogs } from '@/api/audit'
+import { getAuditLogs, getAuditLogDetail } from '@/api/audit'
 import type { AuditLogItem } from '@/api/types'
 import PageContainer from '@/components/PageContainer.vue'
 const columns: TableColumn<AuditLogItem>[] = [
@@ -45,10 +51,10 @@ const columns: TableColumn<AuditLogItem>[] = [
 ]
 const moduleOptions = [
   { label: '全部模块', value: 'all' }, { label: '选课', value: 'ENROLL' }, { label: '成绩', value: 'GRADE' },
-  { label: '认证', value: 'AUTH' }, { label: '用户', value: 'USER' }, { label: '基础数据', value: 'BASE' },
+  { label: '教学班', value: 'CLASS' }, { label: '认证', value: 'AUTH' }, { label: '用户', value: 'USER' }, { label: '基础数据', value: 'BASE' },
 ]
 const resultOptions = [{ label: '全部结果', value: 'all' }, { label: '成功', value: 'SUCCESS' }, { label: '失败', value: 'FAIL' }]
-const query = reactive({ username: '', module: 'all', result: 'all' })
+const query = reactive({ username: '', module: 'all', result: 'all', action: '', targetType: '', targetId: '', startTime: '', endTime: '' })
 const logs = ref<AuditLogItem[]>([])
 const selectedLog = ref<AuditLogItem | null>(null)
 const detailOpen = computed({ get: () => selectedLog.value !== null, set: open => { if (!open) selectedLog.value = null } })
@@ -57,6 +63,10 @@ const size = 20
 const total = ref(0)
 const loading = ref(false)
 const error = ref('')
+async function showDetail(id: number) {
+  try { selectedLog.value = await getAuditLogDetail(id) }
+  catch { error.value = '详情加载失败，请重试。' }
+}
 function search() { page.value = 1; void loadData() }
 function changePage(next: number) { page.value = next; void loadData() }
 async function loadData() {
@@ -67,6 +77,10 @@ async function loadData() {
       username: query.username.trim() || undefined,
       module: query.module === 'all' ? undefined : query.module,
       result: query.result === 'all' ? undefined : query.result,
+      action: query.action.trim() || undefined,
+      targetType: query.targetType.trim() || undefined,
+      targetId: query.targetId ? Number(query.targetId) : undefined,
+      startTime: query.startTime || undefined, endTime: query.endTime || undefined,
       page: page.value, size,
     })
     logs.value = result.records || []

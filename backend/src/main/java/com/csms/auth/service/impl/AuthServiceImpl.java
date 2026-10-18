@@ -35,34 +35,40 @@ public class AuthServiceImpl implements AuthService {
     private static final int LOCK_MINUTES = 15;
 
     private final UserMapper userMapper;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final com.csms.audit.service.AuditWriter audit;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final com.csms.security.UserAccessRegistry access;
 
-    public AuthServiceImpl(UserMapper userMapper, PasswordEncoder passwordEncoder, JwtService jwtService, com.csms.security.UserAccessRegistry access) {
+    public AuthServiceImpl(UserMapper userMapper, PasswordEncoder passwordEncoder, JwtService jwtService, com.csms.security.UserAccessRegistry access, org.springframework.jdbc.core.JdbcTemplate jdbc, com.csms.audit.service.AuditWriter audit) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.access = access;
+        this.access = access;this.jdbc=jdbc;this.audit=audit;
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = BizException.class)
     public String login(String username, String password) {
-        User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username).last("FOR UPDATE"));
 
         if (user == null) {
+            loginRecord(username,null,"USER_NOT_FOUND");
             throw new BizException(ErrorCode.AUTH_BAD_CREDENTIALS);
         }
         if (user.getStatus() == UserStatus.DISABLED) {
+            loginRecord(username,user,"DISABLED");
             throw new BizException(ErrorCode.AUTH_DISABLED);
         }
         if (user.getLockUntil() != null && user.getLockUntil().isAfter(LocalDateTime.now())) {
+            loginRecord(username,user,"LOCKED");
             long minutes = Duration.between(LocalDateTime.now(), user.getLockUntil()).toMinutes() + 1;
             throw new BizException(ErrorCode.AUTH_LOCKED, "账号已锁定，请 " + minutes + " 分钟后再试");
         }
         if (!passwordEncoder.matches(password, user.getPassword())) {
             recordFailure(user);
+            loginRecord(username,user,"BAD_PASSWORD");
             throw new BizException(ErrorCode.AUTH_BAD_CREDENTIALS);
         }
 
@@ -72,15 +78,29 @@ public class AuthServiceImpl implements AuthService {
                 .set(User::getLockUntil, null)
                 .set(User::getLastLoginAt, LocalDateTime.now()));
 
+        loginRecord(username,user,"SUCCESS");
         String role = user.getUserType() == null ? null : user.getUserType().name();
         return jwtService.generateToken(user.getId(), user.getUsername(), role, user.getDeptId(), user.getVersion()==null?0:user.getVersion());
     }
 
+    private void loginRecord(String username,User user,String result) {
+        var request=com.csms.audit.service.AuditWriter.request();
+        jdbc.update("INSERT INTO sys_login_log(username,user_id,ip,user_agent,result) VALUES (?,?,?,?,?)",
+            username,"SUCCESS".equals(result)&&user!=null?user.getId():null,
+            request==null?null:com.csms.audit.service.AuditWriter.clip(request.getRemoteAddr(),45),
+            request==null?null:com.csms.audit.service.AuditWriter.clip(request.getHeader("User-Agent"),300),result);
+        var actor=new CurrentUserHolder.UserContext(user==null?null:user.getId(),username,
+            user==null?null:user.getUserType().name(),user==null?null:user.getDeptId());
+        audit.recordAs(actor,"AUTH","LOGIN","sys_user",user==null?null:user.getId(),null,
+            Map.of("loginResult",result),"SUCCESS".equals(result)?"SUCCESS":"FAIL",request);
+    }
+
     private void recordFailure(User user) {
-        int failCount = (user.getFailCount() == null ? 0 : user.getFailCount()) + 1;
+        int failCount = (user.getLockUntil()!=null || user.getFailCount()==null ? 0 : user.getFailCount()) + 1;
         LambdaUpdateWrapper<User> update = new LambdaUpdateWrapper<User>()
                 .eq(User::getId, user.getId())
-                .set(User::getFailCount, failCount);
+                .set(User::getFailCount, failCount)
+                .set(User::getLockUntil, null);
         if (failCount >= MAX_FAIL_COUNT) {
             update.set(User::getLockUntil, LocalDateTime.now().plusMinutes(LOCK_MINUTES));
         }
@@ -89,8 +109,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout() {
-        // 无状态 JWT：服务端不维护会话，登出由前端清除 Token 完成。
-        // 如需强制失效，可在此接入 Token 黑名单（P2）。
+        audit.record("AUTH","LOGOUT","sys_user",CurrentUserHolder.get().getId(),null,null);
     }
 
     @Override
@@ -141,6 +160,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void changePassword(String oldPassword, String newPassword) {
+        if(newPassword==null || newPassword.length()<8 || newPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72
+            || !newPassword.matches("(?s).*[A-Za-z].*") || !newPassword.matches("(?s).*[0-9].*"))
+            throw new BizException(ErrorCode.PARAM_ERROR,"新密码须至少8位、包含字母和数字，且不超过72字节");
         CurrentUserHolder.UserContext ctx = CurrentUserHolder.get();
         if (ctx == null) {
             throw new BizException(ErrorCode.AUTH_INVALID_TOKEN);
@@ -158,5 +180,6 @@ public class AuthServiceImpl implements AuthService {
                 .setSql("version=version+1")
                 .set(User::getMustChangePwd, false));
         access.changed(ctx.getId());
+        audit.record("AUTH","CHANGE_PASSWORD","sys_user",ctx.getId(),null,Map.of("credentialsChanged",true));
     }
 }

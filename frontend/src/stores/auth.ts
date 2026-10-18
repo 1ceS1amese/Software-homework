@@ -83,7 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function changePassword(payload: PasswordChangePayload) {
     await changePasswordApi(payload)
-    await logout()
+    clearSession()
   }
 
   return {

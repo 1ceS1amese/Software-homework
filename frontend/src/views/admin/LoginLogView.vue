@@ -4,6 +4,8 @@
       <div class="flex flex-wrap items-end gap-3 rounded-xl border border-(--ui-border) bg-(--ui-bg) p-4">
         <UFormField label="用户名"><UInput v-model="query.username" placeholder="输入用户名" @keyup.enter="search" /></UFormField>
         <UFormField label="结果"><USelect v-model="query.result" :items="resultOptions" class="w-35" /></UFormField>
+        <label class="text-sm">开始时间<input v-model="query.startTime" type="datetime-local" class="block rounded border p-2" /></label>
+        <label class="text-sm">结束时间<input v-model="query.endTime" type="datetime-local" class="block rounded border p-2" /></label>
         <UButton icon="i-lucide-search" :loading="loading" @click="search">查询</UButton>
       </div>
       <UAlert v-if="error" color="error" variant="soft" icon="i-lucide-circle-alert" title="登录日志加载失败" :description="error" />
@@ -32,8 +34,8 @@ const columns: TableColumn<LoginLogItem>[] = [
   { accessorKey: 'loginAt', header: '登录时间' }, { accessorKey: 'username', header: '用户名' },
   { id: 'result', header: '结果' }, { accessorKey: 'ip', header: 'IP' }, { accessorKey: 'userAgent', header: '客户端' },
 ]
-const resultOptions = [{ label: '全部结果', value: 'all' }, { label: '成功', value: 'SUCCESS' }, { label: '失败', value: 'FAIL' }]
-const query = reactive({ username: '', result: 'all' })
+const resultOptions = [{ label: '全部结果', value: 'all' }, { label: '成功', value: 'SUCCESS' }, { label: '全部失败', value: 'FAIL' }, { label: '密码错误', value: 'BAD_PASSWORD' }, { label: '账号锁定', value: 'LOCKED' }, { label: '账号禁用', value: 'DISABLED' }, { label: '用户不存在', value: 'USER_NOT_FOUND' }]
+const query = reactive({ username: '', result: 'all', startTime: '', endTime: '' })
 const logs = ref<LoginLogItem[]>([])
 const page = ref(1)
 const size = 20
@@ -46,7 +48,7 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const result = await getLoginLogs({ username: query.username.trim() || undefined, result: query.result === 'all' ? undefined : query.result, page: page.value, size })
+    const result = await getLoginLogs({ username: query.username.trim() || undefined, result: query.result === 'all' ? undefined : query.result, startTime: query.startTime || undefined, endTime: query.endTime || undefined, page: page.value, size })
     logs.value = result.records || []
     total.value = result.total || 0
   } catch { logs.value = []; total.value = 0; error.value = '请检查网络或后端服务，然后重试。' }

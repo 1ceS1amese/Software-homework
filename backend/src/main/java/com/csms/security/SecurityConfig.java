@@ -21,10 +21,23 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
     private final ObjectMapper objectMapper;
+    private final com.csms.audit.filter.RequestAuditFilter auditFilter;
 
-    public SecurityConfig(JwtFilter jwtFilter, ObjectMapper objectMapper) {
+    public SecurityConfig(JwtFilter jwtFilter, ObjectMapper objectMapper, com.csms.audit.filter.RequestAuditFilter auditFilter) {
         this.jwtFilter = jwtFilter;
         this.objectMapper = objectMapper;
+        this.auditFilter = auditFilter;
+    }
+
+    @Bean
+    public org.springframework.boot.web.servlet.FilterRegistrationBean<JwtFilter> jwtRegistration() {
+        var registration=new org.springframework.boot.web.servlet.FilterRegistrationBean<>(jwtFilter);
+        registration.setEnabled(false);return registration;
+    }
+    @Bean
+    public org.springframework.boot.web.servlet.FilterRegistrationBean<com.csms.audit.filter.RequestAuditFilter> auditRegistration() {
+        var registration=new org.springframework.boot.web.servlet.FilterRegistrationBean<>(auditFilter);
+        registration.setEnabled(false);return registration;
     }
 
     @Bean
@@ -55,7 +68,8 @@ public class SecurityConfig {
                             response.getWriter().write(objectMapper.writeValueAsString(result));
                         })
                 )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(auditFilter, JwtFilter.class);
 
         return http.build();
     }

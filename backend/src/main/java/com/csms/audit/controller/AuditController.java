@@ -16,7 +16,7 @@ import java.util.Map;
 /**
  * 审计与登录日志接口（L-01 ~ L-03）。
  *
- * <p>仅管理员可查。审计数据由各业务的写操作产生，本期先提供检索能力。
+ * <p>仅管理员可查。审计数据由各业务的写操作产生，包含业务变更、认证、查询和拒绝请求。
  */
 @RestController
 public class AuditController {
@@ -34,6 +34,8 @@ public class AuditController {
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String module,
             @RequestParam(required = false) String action,
+            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false) Long targetId,
             @RequestParam(required = false) String result,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
@@ -66,21 +68,16 @@ public class AuditController {
             where.append(" AND result = ? ");
             args.add(result);
         }
-        if (StringUtils.hasText(startTime)) {
-            where.append(" AND created_at >= ? ");
-            args.add(startTime);
-        }
-        if (StringUtils.hasText(endTime)) {
-            where.append(" AND created_at <= ? ");
-            args.add(endTime);
-        }
+        if (StringUtils.hasText(targetType)) { where.append(" AND target_type = ? ");args.add(targetType); }
+        if (targetId != null) { where.append(" AND target_id = ? ");args.add(targetId); }
+        dates(where,args,"created_at",startTime,endTime);
 
         Long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_audit_log " + where,
                 Long.class, args.toArray());
 
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(s);
-        pageArgs.add((p - 1) * s);
+        pageArgs.add((p - 1L) * s);
 
         List<Map<String, Object>> records = jdbc.queryForList("""
                 SELECT id AS id, user_id AS userId, username AS username, role_code AS roleCode,
@@ -119,6 +116,8 @@ public class AuditController {
     public ApiResponse<PageResult<Map<String, Object>>> loginLogs(
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String result,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         requireAdmin();
@@ -133,16 +132,18 @@ public class AuditController {
             args.add("%" + username + "%");
         }
         if (StringUtils.hasText(result)) {
-            where.append(" AND result = ? ");
-            args.add(result);
+            if ("FAIL".equals(result)) where.append(" AND result <> 'SUCCESS' ");
+            else { where.append(" AND result = ? ");args.add(result); }
         }
+
+        dates(where,args,"login_at",startTime,endTime);
 
         Long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_login_log " + where,
                 Long.class, args.toArray());
 
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(s);
-        pageArgs.add((p - 1) * s);
+        pageArgs.add((p - 1L) * s);
 
         List<Map<String, Object>> records = jdbc.queryForList("""
                 SELECT id AS id, username AS username, user_id AS userId, ip AS ip,
@@ -152,6 +153,18 @@ public class AuditController {
                 """ + where + " ORDER BY id DESC LIMIT ? OFFSET ?", pageArgs.toArray());
 
         return ApiResponse.success(new PageResult<>(records, total == null ? 0 : total, p, s));
+    }
+
+    private void dates(StringBuilder where,List<Object> args,String column,String start,String end) {
+        try {
+            java.time.LocalDateTime from=StringUtils.hasText(start)?java.time.LocalDateTime.parse(start.replace(' ','T')):null;
+            java.time.LocalDateTime to=StringUtils.hasText(end)?java.time.LocalDateTime.parse(end.replace(' ','T')):null;
+            if(from!=null&&to!=null&&from.isAfter(to)) throw new IllegalArgumentException();
+            if(from!=null) { where.append(" AND ").append(column).append(" >= ? ");args.add(from); }
+            if(to!=null) { where.append(" AND ").append(column).append(" <= ? ");args.add(to); }
+        } catch(IllegalArgumentException|java.time.format.DateTimeParseException e) {
+            throw new BizException(ErrorCode.PARAM_ERROR,"请输入有效且起止顺序正确的日期时间");
+        }
     }
 
     private void requireAdmin() {
