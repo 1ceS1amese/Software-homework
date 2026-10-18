@@ -13,6 +13,9 @@ import java.util.Date;
 @Service
 public class JwtService {
 
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    public JwtService(org.springframework.jdbc.core.JdbcTemplate jdbc) { this.jdbc=jdbc; }
+
     @Value("${csms.jwt.secret}")
     private String secret;
 
@@ -32,7 +35,11 @@ public class JwtService {
         return generateToken(id,username,role,deptId,null,version);
     }
 
-    public long expirationSeconds() { return expiration/1000; }
+    public long expirationSeconds() {
+        var values=jdbc.queryForList("SELECT config_value FROM sys_config WHERE config_key='auth.jwt_expire_seconds'",String.class);
+        if(!values.isEmpty()) try { long n=Long.parseLong(values.get(0));if(n>=60 && n<=86400) return n; } catch(NumberFormatException ignored) { }
+        return expiration/1000;
+    }
 
     public String generateToken(Long id,String username,String role,Long deptId,Long majorId,int version) {
         return Jwts.builder()
@@ -45,7 +52,7 @@ public class JwtService {
                 .claim("deptId", deptId)
                 .claim("majorId",majorId)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .expiration(new Date(System.currentTimeMillis() + expirationSeconds()*1000))
                 .signWith(getSigningKey())
                 .compact();
     }

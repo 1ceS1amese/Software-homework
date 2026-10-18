@@ -45,9 +45,14 @@ public class ConfigCommandService {
             switch(String.valueOf(before.get("value_type"))) {
                 case "NUMBER" -> {
                     var decimal=new BigDecimal(value);
-                    if(decimal.signum()<0 || decimal.scale()>4 || decimal.compareTo(new BigDecimal("10000"))>0) throw invalid("configValue");
+                    if(decimal.signum()<0 || decimal.scale()>4 || decimal.compareTo(new BigDecimal(name.equals("auth.jwt_expire_seconds")?"86400":"10000"))>0) throw invalid("configValue");
                     if(name.startsWith("grade.weight.") && decimal.compareTo(BigDecimal.ONE)>0) throw invalid("成绩权重");
                     if(name.equals("grade.pass_score") && decimal.compareTo(new BigDecimal("100"))>0) throw invalid("及格线");
+                    if(name.startsWith("auth.")) {
+                        int min=name.equals("auth.jwt_expire_seconds")?60:1;
+                        int max=name.equals("auth.max_fail_count")?20:name.equals("auth.lock_minutes")?1440:86400;
+                        if(decimal.stripTrailingZeros().scale()>0 || decimal.compareTo(BigDecimal.valueOf(min))<0 || decimal.compareTo(BigDecimal.valueOf(max))>0) throw invalid("认证参数");
+                    }
                     String counterpart=name.equals("enroll.min_credit_per_term")?"enroll.max_credit_per_term":name.equals("enroll.max_credit_per_term")?"enroll.min_credit_per_term":null;
                     if(counterpart!=null) {
                         var other=new BigDecimal(String.valueOf(configs.stream().filter(c->counterpart.equals(c.get("config_key"))).findFirst().orElseThrow().get("config_value")));

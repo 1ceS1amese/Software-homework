@@ -95,14 +95,19 @@ public class AuthServiceImpl implements AuthService {
             Map.of("loginResult",result),"SUCCESS".equals(result)?"SUCCESS":"FAIL",request);
     }
 
+    private int setting(String key,int fallback,int max) {
+        var values=jdbc.queryForList("SELECT config_value FROM sys_config WHERE config_key=?",String.class,key);
+        if(!values.isEmpty()) try { int n=Integer.parseInt(values.get(0));if(n>=1&&n<=max)return n; } catch(NumberFormatException ignored) { }
+        return fallback;
+    }
     private void recordFailure(User user) {
         int failCount = (user.getLockUntil()!=null || user.getFailCount()==null ? 0 : user.getFailCount()) + 1;
         LambdaUpdateWrapper<User> update = new LambdaUpdateWrapper<User>()
                 .eq(User::getId, user.getId())
                 .set(User::getFailCount, failCount)
                 .set(User::getLockUntil, null);
-        if (failCount >= MAX_FAIL_COUNT) {
-            update.set(User::getLockUntil, LocalDateTime.now().plusMinutes(LOCK_MINUTES));
+        if (failCount >= setting("auth.max_fail_count",MAX_FAIL_COUNT,20)) {
+            update.set(User::getLockUntil, LocalDateTime.now().plusMinutes(setting("auth.lock_minutes",LOCK_MINUTES,1440)));
         }
         userMapper.update(null, update);
     }
@@ -147,7 +152,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override public Map<String,Object> tokenResponse(String token) {
-        return Map.of("accessToken",token,"tokenType","Bearer","expiresIn",jwtService.expirationSeconds(),"user",profile(jwtService.getId(token)));
+        return Map.of("accessToken",token,"tokenType","Bearer","expiresIn",(jwtService.getClaims(token).getExpiration().getTime()-jwtService.getClaims(token).getIssuedAt().getTime())/1000,"user",profile(jwtService.getId(token)));
     }
 
     /** 按角色下发按钮级权限码（对应 docs/04 §9） */

@@ -67,3 +67,27 @@ test('REL-08 登录失败持久化与锁定、操作审计、检索详情和敏�
   expect((await page.request.get('/api/audit-logs')).status()).toBe(401)
   expect((await api(page, `/users/${id}`, 'DELETE')).status).toBe(200)
 })
+
+test('REL-08 认证动态配置校验与新令牌有效期', async ({ page }, info) => {
+  await login(page, 'admin')
+  const settings = ['auth.max_fail_count', 'auth.lock_minutes', 'auth.jwt_expire_seconds']
+  const previous = (await api(page, '/configs')).body.data.filter((c: any) => settings.includes(c.configKey))
+  const username = `policy-${info.project.name}-${Date.now() % 1000000}`
+  const created = await api(page, '/users', 'POST', { username, realName: '认证配置验收' })
+  const id = created.body.data.id
+  try {
+    for (const [key, value] of [['auth.max_fail_count', '2'], ['auth.lock_minutes', '1'], ['auth.jwt_expire_seconds', '600']])
+      expect((await api(page, '/configs/' + key, 'PUT', { configValue: value })).status).toBe(200)
+    for (const value of ['0', '1.5', '90000']) expect((await api(page, '/configs/auth.jwt_expire_seconds', 'PUT', { configValue: value })).status).toBe(400)
+    const r = await page.request.post('/api/v1/auth/login', { data: { username, password: created.body.data.initialPassword } })
+    const data = (await r.json()).data
+    expect(data.expiresIn).toBe(600)
+    const claims = JSON.parse(Buffer.from(data.accessToken.split('.')[1], 'base64url').toString())
+    expect(claims.exp - claims.iat).toBe(600)
+    for (let i = 0; i < 2; i++) expect((await page.request.post('/api/auth/login', { data: { username, password: 'WrongPolicy123' } })).status()).toBe(401)
+    expect(database(`SELECT CONCAT(fail_count,'|',TIMESTAMPDIFF(SECOND,NOW(),lock_until) BETWEEN 50 AND 60) FROM sys_user WHERE id=${id}`)).toBe('2|1')
+  } finally {
+    for (const c of previous) await api(page, '/configs/' + c.configKey, 'PUT', { configValue: c.configValue })
+    await api(page, `/users/${id}`, 'DELETE')
+  }
+})
