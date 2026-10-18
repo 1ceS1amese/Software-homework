@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily CSMS database backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=csms-backup.service
+
+[Install]
+WantedBy=timers.target

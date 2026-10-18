@@ -34,7 +34,7 @@ source scripts/env.sh
 
 必须从同一受版本控制的源码快照组织发布包，只包含：
 
-- `backend/target/csms-backend-1.0.0-SNAPSHOT.jar`，发布时命名为 `app.jar`。
+- `backend/target/csms-backend.jar`，发布时命名为 `app.jar`。
 - `frontend/dist/`，发布时命名为 `frontend/`。
 - [原生配置模板](../deploy/native/)，发布时命名为 `native/`。
 - 记录源码提交与每个文件 SHA-256 的 manifest，以及发布包 SHA-256 校验文件。
@@ -102,7 +102,7 @@ python3 /opt/csms/current/native/create-certificate.py "$PUBLIC_IP"
 配置必须实现：
 
 - IP 的 443 端口托管前端，服务器本机的 80 端口跳转 HTTPS；SPA 深层路由刷新应返回入口页面。
-- `/api/` 反代到回环后端并移除此前缀，沿用当前应用兼容调用；不能据此声称 `docs/05` 的全部标准 API 已完成。
+- `/api/v1/` 反代时保留完整前缀；旧 `/api/` 反代移除此前缀，两种入口继续兼容。
 - API 代理缓存显式关闭，避免继承已有 Nginx 的缓存策略；静态指纹资源允许长期缓存。
 - 安全头和缓存头由 Nginx 统一输出，隐藏后端重复头；演示私有 CA 不启用长期 HSTS 策略。
 - 反代覆盖真实来源与协议头，登录接口应限速；数据库与后端端口不得新增公网监听。
@@ -146,4 +146,4 @@ curl --fail --cacert "$CSMS_CA_CERT" "https://$PUBLIC_IP/api/actuator/health"
 
 本次交付为指定演示目标，真实地址与密码不写入仓库。某些网络路径可能在公网 HTTP 到达 Nginx 前返回外部跳转；必须分别观察公网响应与服务器本机响应，不能据此反复修改已正确的站点配置。此时应使用完整 `https://<server-ip>/` 地址，并由服务器所有者按其网络接入条件处理 HTTP 入口。
 
-本方案不包含原生移动 App、离线消息中心、正式生产发版或原始设计中仍未交付的管理模块；范围继续见 README Roadmap 与 docs/16。
+本方案不包含原生移动 App、离线消息中心或真实高校生产运行。1.0.0 的发布、备份恢复与回退流程见 [升级指南](18-版本发布与升级迁移.md)，实际执行结果见最新验收记录。

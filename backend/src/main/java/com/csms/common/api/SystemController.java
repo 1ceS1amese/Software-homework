@@ -9,12 +9,12 @@ import static com.csms.common.service.CommandSupport.require;
 
 @RestController
 public class SystemController {
-    private final HealthEndpoint health;private final JdbcTemplate jdbc;
-    public SystemController(HealthEndpoint health,JdbcTemplate jdbc) { this.health=health;this.jdbc=jdbc; }
+    private final HealthEndpoint health;private final JdbcTemplate jdbc;private final org.springframework.boot.info.BuildProperties build;
+    public SystemController(HealthEndpoint health,JdbcTemplate jdbc,org.springframework.beans.factory.ObjectProvider<org.springframework.boot.info.BuildProperties> build) { this.health=health;this.jdbc=jdbc;this.build=build.getIfAvailable(); }
     @GetMapping("/api/v1/actuator/health")
     public ResponseEntity<?> health() {
         String status=health.health().getStatus().getCode();
-        return ResponseEntity.status("UP".equals(status)?200:503).body(ApiResponse.success(Map.of("status",status)));
+        return ResponseEntity.status("UP".equals(status)?200:503).body(ApiResponse.success(Map.of("status",status,"version",build==null?"development":build.getVersion(),"source",build==null?"development":build.get("source"))));
     }
     @GetMapping("/enrollment/reconcile")
     public ApiResponse<?> reconcile() {

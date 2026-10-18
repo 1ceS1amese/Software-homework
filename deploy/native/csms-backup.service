@@ -1,0 +1,10 @@
+[Unit]
+Description=CSMS dedicated database backup
+Requires=csms-mysql.service
+After=csms-mysql.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 /opt/csms/current/native/backup.py
+UMask=0077

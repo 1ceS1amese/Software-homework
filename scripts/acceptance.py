@@ -132,7 +132,7 @@ def main():
         env['ACCEPTANCE_MYSQL_CONFIG'] = str(client)
         # 每次运行持有独立 JAR 快照，后续打包不能改变正在验收的代码。
         jar = run / 'backend.jar'
-        shutil.copy2(PROJECT / 'backend/target/csms-backend-1.0.0-SNAPSHOT.jar', jar)
+        shutil.copy2(PROJECT / 'backend/target/csms-backend.jar', jar)
         start(['java', '-jar', str(jar)], 'backend')
         wait_until(lambda: ready(env['ACCEPTANCE_BACKEND_URL'] + '/actuator/health'), children)
         fixture = (PROJECT / 'frontend/tests/acceptance/fixtures.sql').read_text()

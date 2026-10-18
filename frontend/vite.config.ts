@@ -6,6 +6,8 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 配置只由启动脚本注入；禁止构建时自动读取可能含私有参数的 .env 文件。
+  envDir: false,
   plugins: [vue(), tailwindcss(), ui({
     colorMode: false,
     // 导航图标定义在路由 TS 中，也必须纳入扫描，避免运行时请求外部图标服务。

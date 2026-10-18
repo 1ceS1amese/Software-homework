@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/env.sh"
 STATE_DIR="$PROJECT_DIR/.local"
 ENV_FILE="$PROJECT_DIR/.env.local"
-BACKEND_JAR="$PROJECT_DIR/backend/target/csms-backend-1.0.0-SNAPSHOT.jar"
+BACKEND_JAR="$PROJECT_DIR/backend/target/csms-backend.jar"
 mkdir -p "$STATE_DIR/logs" "$STATE_DIR/run"
 
 require() {
