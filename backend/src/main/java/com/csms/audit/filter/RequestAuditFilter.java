@@ -25,9 +25,11 @@ public class RequestAuditFilter extends OncePerRequestFilter {
         boolean thrown=true;
         try { chain.doFilter(request,response);thrown=false; }
         finally {
+            Object pattern=request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+            String path=pattern==null?"unmapped":pattern.toString().replaceFirst("^/api/v1","");
+            LoggerFactory.getLogger(getClass()).info("HTTP {} {} status={} traceId={}",
+                request.getMethod(),path,thrown?500:response.getStatus(),MDC.get("traceId"));
             if(!Boolean.TRUE.equals(request.getAttribute(AuditWriter.RECORDED))) {
-                Object pattern=request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-                String path=pattern==null?"unmapped":pattern.toString().replaceFirst("^/api/v1","");
                 String module=path.contains("auth")?"AUTH":path.contains("enroll")?"ENROLL":path.contains("grade")?"GRADE":path.contains("teaching-class")?"CLASS":path.contains("user")?"USER":"BASE";
                 try {
                     audit.recordAs(CurrentUserHolder.get(),module,"HTTP_"+request.getMethod(),"http_request",null,null,

@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { api, database, login } from './helpers'
 
 test('REL-08 登录失败持久化与锁定、操作审计、检索详情和敏感字段排除', async ({ page }, info) => {
@@ -59,11 +61,19 @@ test('REL-08 登录失败持久化与锁定、操作审计、检索详情和敏�
   await page.getByPlaceholder('用户名', { exact: true }).fill(username)
   await page.getByPlaceholder('例如 LOGIN').fill('CHANGE_PASSWORD')
   await page.getByRole('button', { name: '查询', exact: true }).click()
+  const detailRow = page.getByRole('row').filter({ hasText: username }).filter({ hasText: 'CHANGE_PASSWORD' })
+  await expect(detailRow).toHaveCount(1)
   const detailResponse = page.waitForResponse(r => /\/audit-logs\/\d+$/.test(r.url()))
-  await page.getByRole('button', { name: '详情', exact: true }).first().click()
+  await detailRow.getByRole('button', { name: '详情', exact: true }).click()
   expect((await detailResponse).status()).toBe(200)
   await expect(page.getByRole('dialog')).toContainText('credentialsChanged')
   await expect(page.getByRole('dialog')).toContainText('追踪号')
+  const config = process.env.ACCEPTANCE_MYSQL_CONFIG!
+  expect(config).toContain('/.local/acceptance/run-')
+  const log = readFileSync(join(dirname(config), 'backend.log'), 'utf8')
+  expect(log.includes(`status=403 traceId=${trace}`)).toBe(true)
+  for (const secret of [password, reset.body.data.initialPassword, newPassword, token]) expect(log.includes(secret)).toBe(false)
+  expect(/\$2[aby]\$\d\d\$/.test(log)).toBe(false)
   expect((await page.request.get('/api/audit-logs')).status()).toBe(401)
   expect((await api(page, `/users/${id}`, 'DELETE')).status).toBe(200)
 })

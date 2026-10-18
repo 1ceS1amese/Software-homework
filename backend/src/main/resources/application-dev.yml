@@ -17,6 +17,7 @@ spring:
 
 logging:
   level:
-    com.csms: debug
+    # 禁止 MyBatis DEBUG 参数日志输出密码哈希。
+    com.csms: info
     org.springframework.web: info
     org.springframework.security: info
