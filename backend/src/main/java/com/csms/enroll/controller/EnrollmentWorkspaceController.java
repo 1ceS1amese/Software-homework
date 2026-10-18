@@ -12,8 +12,8 @@ import static com.csms.common.service.CommandSupport.*;
 
 @RestController
 public class EnrollmentWorkspaceController {
-    private final EnrollmentService enrollments;private final StatQueryService stats;private final TeachingClassQueryService classes;private final com.csms.base.service.BaseDataQueryService base;
-    public EnrollmentWorkspaceController(EnrollmentService enrollments,StatQueryService stats,TeachingClassQueryService classes,com.csms.base.service.BaseDataQueryService base) { this.enrollments=enrollments;this.stats=stats;this.classes=classes;this.base=base; }
+    private final EnrollmentService enrollments;private final StatQueryService stats;private final TeachingClassQueryService classes;private final com.csms.base.service.BaseDataQueryService base;private final com.csms.audit.service.AuditWriter audit;
+    public EnrollmentWorkspaceController(EnrollmentService enrollments,StatQueryService stats,TeachingClassQueryService classes,com.csms.base.service.BaseDataQueryService base,com.csms.audit.service.AuditWriter audit) { this.enrollments=enrollments;this.stats=stats;this.classes=classes;this.base=base;this.audit=audit; }
     @GetMapping("/my/enrollments")
     public ApiResponse<?> mine(@RequestParam(required=false) Long termId,@RequestParam(required=false) String status,@RequestParam(required=false) Long courseId,@RequestParam(required=false) String keyword) {
         return ApiResponse.success(enrollments.myEnrollments(require("STUDENT").getId(),termId,status,courseId,keyword));
@@ -40,7 +40,9 @@ public class EnrollmentWorkspaceController {
         List<Object> successes=new ArrayList<>(),failures=new ArrayList<>();
         // 门面每次调用独立的事务 Bean；某条失败不回滚其他成功记录。
         for(Long id:parsed) try { successes.add(enrollments.enroll(me.getId(),id)); }
-            catch(BizException e) { failures.add(Map.of("teachingClassId",id,"code",e.getErrorCode().getCode(),"message",e.getMessage())); }
+            catch(BizException e) {
+                audit.recordAs(me,"ENROLL","ENROLL_BATCH_FAILED","teaching_class",id,null,Map.of("reasonCode",e.getErrorCode().getCode()),"FAIL",com.csms.audit.service.AuditWriter.request());
+                failures.add(Map.of("teachingClassId",id,"code",e.getErrorCode().getCode(),"message",e.getMessage())); }
         return ApiResponse.success(Map.of("successes",successes,"failures",failures,"successCount",successes.size(),"failureCount",failures.size()));
     }
 }

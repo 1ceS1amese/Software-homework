@@ -148,7 +148,7 @@ public class GradeService {
 
     /** G-03 发布成绩（BR-13：成绩与选课状态在同一事务内变更） */
     @Transactional
-    public void publish(Long teachingClassId, Long publisherId) {
+    public boolean publish(Long teachingClassId, Long publisherId) {
         lockClass(teachingClassId);
         List<Map<String, Object>> rows = classGrades(teachingClassId);
         if (rows.isEmpty()) {
@@ -164,7 +164,7 @@ public class GradeService {
 
         boolean allPublished = rows.stream().allMatch(r -> "PUBLISHED".equals(r.get("status")));
         if (allPublished) {
-            return; // 幂等：重复发布不产生副作用
+            return false; // 幂等：重复发布不产生副作用
         }
 
         jdbc.update("""
@@ -180,6 +180,7 @@ public class GradeService {
                  WHERE teaching_class_id = ? AND status = 'ENROLLED' AND deleted = 0
                 """, teachingClassId);
         audit.record("GRADE", "PUBLISH_GRADES", "teaching_class", teachingClassId, rows, classGrades(teachingClassId));
+        return true;
     }
 
     /** G-04 管理员解锁成绩 */

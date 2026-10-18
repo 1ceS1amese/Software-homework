@@ -24,7 +24,7 @@ public class GradeWorkspaceController {
     @PostMapping("/teaching-classes/{id}/grades/publish")
     public ApiResponse<?> publish(@PathVariable Long id,@RequestBody Map<String,Object> body) {
         if(!Boolean.TRUE.equals(body.get("confirm"))) throw new BizException(ErrorCode.PARAM_ERROR,"请确认发布成绩");
-        var me=require("TEACHER");grades.assertTeacherOwns(id,me.getId(),false);grades.publish(id,me.getId());return ApiResponse.success();
+        var me=require("TEACHER");grades.assertTeacherOwns(id,me.getId(),false);boolean changed=grades.publish(id,me.getId());return new ApiResponse<>(0,changed?"成绩发布成功":"成绩已发布",null);
     }
     @PostMapping("/teaching-classes/{id}/grades/unpublish")
     public ApiResponse<?> unlock(@PathVariable Long id,@RequestBody Map<String,Object> body) {

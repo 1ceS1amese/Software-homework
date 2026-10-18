@@ -21,6 +21,7 @@ test('REL-09C 标准选课/教学/成绩完整链路、批次隔离及旧退课�
     expect(database(`SELECT enrolled_count FROM teaching_class WHERE id=${id}`)).toBe('0')
     const batch = await call('acceptance_student', '/enrollments/batch', 'POST', { teachingClassIds: [id, '999999', id] })
     expect(batch.body.data).toMatchObject({ successCount: 1, failureCount: 2 })
+    expect(database(`SELECT COUNT(*) FROM sys_audit_log WHERE trace_id='${batch.body.traceId}' AND action='ENROLL_BATCH_FAILED' AND result='FAIL'`)).toBe('2')
     const enrollmentId = batch.body.data.successes[0].id
     expect((await call('acceptance_student', '/enrollments/check', 'POST', { teachingClassId: id })).body.data.reasonCode).toBe(50101)
     const classes = await call('teacher1', '/my/teaching-classes?termId=9001')
@@ -54,7 +55,7 @@ test('REL-09C 标准选课/教学/成绩完整链路、批次隔离及旧退课�
     expect((await call('teacher1', `/grades/${gradeId}`, 'PUT', { finalScore: 90 })).status).toBe(200)
     expect((await call('teacher1', `/teaching-classes/${id}/grades/publish`, 'POST', { confirm: false })).status).toBe(400)
     expect((await call('teacher1', `/teaching-classes/${id}/grades/publish`, 'POST', { confirm: true })).status).toBe(200)
-    expect((await call('teacher1', `/teaching-classes/${id}/grades/publish`, 'POST', { confirm: true })).status).toBe(200)
+    expect((await call('teacher1', `/teaching-classes/${id}/grades/publish`, 'POST', { confirm: true })).body.message).toBe('成绩已发布')
     expect((await call('teacher1', `/grades/${gradeId}`, 'PUT', { finalScore: 70 })).body.code).toBe(60103)
     expect((await call('acceptance_student', '/my/grades?termId=9001')).body.data.some((g: any) => g.id === gradeId && Number(g.totalScore) === 84)).toBe(true)
     expect((await call('admin', `/teaching-classes/${id}/grades/unpublish`, 'POST', { reason: '标准接口验收解锁' })).status).toBe(200)
