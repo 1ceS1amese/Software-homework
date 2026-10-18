@@ -30,6 +30,10 @@ public class TeachingClassController {
     /** C-01 教学班列表 */
     @GetMapping
     public ApiResponse<PageResult<Map<String, Object>>> list(
+            @RequestParam(required=false) Long deptId,
+            @RequestParam(required=false) Boolean hasConflict,
+            @RequestParam(required=false) String sortBy,
+            @RequestParam(required=false) String sortOrder,
             @RequestParam(required = false) Long termId,
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long teacherId,
@@ -39,7 +43,7 @@ public class TeachingClassController {
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         return ApiResponse.success(queryService.query(
-                termId, courseId, teacherId, keyword, status, onlyAvailable, page, size));
+                termId, courseId, teacherId, keyword, status, onlyAvailable, deptId, hasConflict, sortBy, sortOrder, page, size));
     }
 
     /** C-02 教学班详情 */

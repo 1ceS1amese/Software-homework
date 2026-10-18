@@ -136,6 +136,7 @@ export interface TermItem {
   endDate: string
   enrollStart: string
   enrollEnd: string
+  effectiveWithdrawEnd?: string
   withdrawEnd: string
   status: TermStatus
 }

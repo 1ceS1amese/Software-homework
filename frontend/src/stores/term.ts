@@ -19,12 +19,12 @@ export const useTermStore = defineStore('term', () => {
     const now = new Date().getTime()
     const start = new Date(currentTerm.value.enrollStart).getTime()
     const end = new Date(currentTerm.value.enrollEnd).getTime()
-    return now >= start && now <= end
+    return currentTerm.value.status === 'ENROLLING' && now >= start && now <= end
   })
 
   const isWithdrawAllowedNow = computed(() => {
     if (!currentTerm.value) return false
-    const deadline = currentTerm.value.withdrawEnd || currentTerm.value.enrollEnd
+    const deadline = currentTerm.value.effectiveWithdrawEnd || currentTerm.value.withdrawEnd || currentTerm.value.enrollEnd
     return !!deadline && Date.now() <= new Date(deadline).getTime()
   })
 

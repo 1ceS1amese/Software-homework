@@ -35,6 +35,8 @@ public class UserController {
     /** U-01 用户列表 */
     @GetMapping
     public ApiResponse<PageResult<Map<String, Object>>> list(
+            @RequestParam(required=false) String sortBy,
+            @RequestParam(required=false) String sortOrder,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) Long deptId,
             @RequestParam(required = false) Long majorId,
@@ -76,7 +78,7 @@ public class UserController {
 
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(s);
-        pageArgs.add((p - 1) * s);
+        pageArgs.add((p - 1L) * s);
 
         List<Map<String, Object>> records = jdbc.queryForList("""
                 SELECT u.id AS id, u.username AS username, u.real_name AS realName,
@@ -91,7 +93,7 @@ public class UserController {
                   FROM sys_user u
                   LEFT JOIN dept d  ON d.id = u.dept_id
                   LEFT JOIN major m ON m.id = u.major_id
-                """ + where + " ORDER BY u.id LIMIT ? OFFSET ?", pageArgs.toArray());
+                """ + where + " ORDER BY " + com.csms.common.api.QuerySort.order(sortBy,sortOrder,Map.of("id","u.id","username","u.username","realName","u.real_name","createdAt","u.created_at"),"u.id") + ",u.id LIMIT ? OFFSET ?", pageArgs.toArray());
 
         return ApiResponse.success(new PageResult<>(records, total == null ? 0 : total, p, s));
     }
@@ -138,6 +140,9 @@ public class UserController {
                        COALESCE(SUM(CASE WHEN user_type = 'STUDENT' THEN 1 ELSE 0 END), 0) AS studentCount,
                        COALESCE(SUM(CASE WHEN user_type = 'TEACHER' THEN 1 ELSE 0 END), 0) AS teacherCount,
                        COALESCE(SUM(CASE WHEN user_type = 'ADMIN'   THEN 1 ELSE 0 END), 0) AS adminCount,
+                       COALESCE(SUM(gender = 'MALE'),0) AS maleCount,
+                       COALESCE(SUM(gender = 'FEMALE'),0) AS femaleCount,
+                       COALESCE(SUM(gender = 'UNKNOWN' OR gender IS NULL),0) AS unknownGenderCount,
                        COALESCE(SUM(CASE WHEN status = 'DISABLED'   THEN 1 ELSE 0 END), 0) AS disabledCount
                   FROM sys_user WHERE deleted = 0
                 """);

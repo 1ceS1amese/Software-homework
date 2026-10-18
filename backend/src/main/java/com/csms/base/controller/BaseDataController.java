@@ -27,15 +27,15 @@ public class BaseDataController {
 
     // —— B-01 院系 ——
     @GetMapping("/depts")
-    public ApiResponse<List<Map<String, Object>>> depts(@RequestParam(required = false) String keyword) {
-        return ApiResponse.success(queryService.depts(keyword));
+    public ApiResponse<List<Map<String, Object>>> depts(@RequestParam(required = false) String keyword, @RequestParam(required=false) String status, @RequestParam(defaultValue="false") boolean tree) {
+        return ApiResponse.success(queryService.depts(keyword,status,tree));
     }
 
     // —— B-05 专业 ——
     @GetMapping("/majors")
     public ApiResponse<List<Map<String, Object>>> majors(@RequestParam(required = false) Long deptId,
-                                                         @RequestParam(required = false) String keyword) {
-        return ApiResponse.success(queryService.majors(deptId, keyword));
+                                                         @RequestParam(required = false) String keyword, @RequestParam(required=false) String status) {
+        return ApiResponse.success(queryService.majors(deptId, keyword,status));
     }
 
     // —— B-09 学期 ——
@@ -52,6 +52,9 @@ public class BaseDataController {
     // —— B-13 课程 ——
     @GetMapping("/courses")
     public ApiResponse<PageResult<Map<String, Object>>> courses(
+            @RequestParam(required=false) Long termId,
+            @RequestParam(required=false) String sortBy,
+            @RequestParam(required=false) String sortOrder,
             @RequestParam(required = false) Long deptId,
             @RequestParam(required = false) Long majorId,
             @RequestParam(required = false) String courseType,
@@ -60,9 +63,9 @@ public class BaseDataController {
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         int p = (page == null || page < 1) ? 1 : page;
-        int s = (size == null || size < 1) ? 20 : Math.min(size, 200);
-        List<Map<String, Object>> records = queryService.courses(deptId, majorId, courseType, status, keyword, p, s);
-        long total = queryService.courseCount(deptId, majorId, courseType, status, keyword);
+        int s = (size == null || size < 1) ? 20 : Math.min(size, 100);
+        List<Map<String, Object>> records = queryService.courses(deptId, majorId, courseType, status, keyword, termId, sortBy, sortOrder, p, s);
+        long total = queryService.courseCount(deptId, majorId, courseType, status, keyword, termId);
         return ApiResponse.success(new PageResult<>(records, total, p, s));
     }
 

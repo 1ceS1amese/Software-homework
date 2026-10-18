@@ -23,7 +23,7 @@ public class BaseDataQueryService {
     }
 
     // —— 院系 ——
-    public List<Map<String, Object>> depts(String keyword) {
+    public List<Map<String, Object>> depts(String keyword, String status, boolean tree) {
         StringBuilder sql = new StringBuilder("""
                 SELECT id AS id, code AS code, name AS name, leader AS leader,
                        status AS status, sort_no AS sortNo
@@ -35,12 +35,15 @@ public class BaseDataQueryService {
             args.add("%" + keyword + "%");
             args.add("%" + keyword + "%");
         }
+        if(StringUtils.hasText(status)) { sql.append(" AND status=?");args.add(status); }
         sql.append(" ORDER BY sort_no, id");
-        return jdbc.queryForList(sql.toString(), args.toArray());
+        var rows=jdbc.queryForList(sql.toString(),args.toArray());
+        if(tree) for(var row:rows) row.put("children",majors(((Number)row.get("id")).longValue(),null,status));
+        return rows;
     }
 
     // —— 专业 ——
-    public List<Map<String, Object>> majors(Long deptId, String keyword) {
+    public List<Map<String, Object>> majors(Long deptId, String keyword, String status) {
         StringBuilder sql = new StringBuilder("""
                 SELECT m.id AS id, m.dept_id AS deptId, d.name AS deptName,
                        m.code AS code, m.name AS name,
@@ -59,6 +62,7 @@ public class BaseDataQueryService {
             args.add("%" + keyword + "%");
             args.add("%" + keyword + "%");
         }
+        if(StringUtils.hasText(status)) { sql.append(" AND m.status=?");args.add(status); }
         sql.append(" ORDER BY m.dept_id, m.id");
         return jdbc.queryForList(sql.toString(), args.toArray());
     }
@@ -72,6 +76,7 @@ public class BaseDataQueryService {
                        DATE_FORMAT(enroll_start, '%Y-%m-%d %H:%i:%s')  AS enrollStart,
                        DATE_FORMAT(enroll_end, '%Y-%m-%d %H:%i:%s')    AS enrollEnd,
                        DATE_FORMAT(withdraw_end, '%Y-%m-%d %H:%i:%s')  AS withdrawEnd,
+                       DATE_FORMAT(CASE WHEN (SELECT config_value FROM sys_config WHERE config_key='enroll.withdraw_deadline_mode')='CUSTOM' THEN COALESCE(withdraw_end,enroll_end) ELSE enroll_end END,'%Y-%m-%d %H:%i:%s') AS effectiveWithdrawEnd,
                        status AS status
                   FROM term WHERE deleted = 0
                  ORDER BY start_date DESC
@@ -87,6 +92,7 @@ public class BaseDataQueryService {
                        DATE_FORMAT(enroll_start, '%Y-%m-%d %H:%i:%s')  AS enrollStart,
                        DATE_FORMAT(enroll_end, '%Y-%m-%d %H:%i:%s')    AS enrollEnd,
                        DATE_FORMAT(withdraw_end, '%Y-%m-%d %H:%i:%s')  AS withdrawEnd,
+                       DATE_FORMAT(CASE WHEN (SELECT config_value FROM sys_config WHERE config_key='enroll.withdraw_deadline_mode')='CUSTOM' THEN COALESCE(withdraw_end,enroll_end) ELSE enroll_end END,'%Y-%m-%d %H:%i:%s') AS effectiveWithdrawEnd,
                        status AS status
                   FROM term WHERE deleted = 0
                  ORDER BY (status = 'ENROLLING') DESC, start_date DESC
@@ -97,12 +103,13 @@ public class BaseDataQueryService {
 
     // —— 课程 ——
     public List<Map<String, Object>> courses(Long deptId, Long majorId, String courseType,
-                                             String status, String keyword, Integer page, Integer size) {
+                                             String status, String keyword, Long termId, String sortBy, String sortOrder, Integer page, Integer size) {
         int p = (page == null || page < 1) ? 1 : page;
-        int s = (size == null || size < 1) ? 20 : Math.min(size, 200);
+        int s = (size == null || size < 1) ? 20 : Math.min(size, 100);
 
         StringBuilder where = new StringBuilder(" WHERE c.deleted = 0 ");
         List<Object> args = new ArrayList<>();
+        if(termId!=null) { where.append(" AND EXISTS(SELECT 1 FROM teaching_class tc WHERE tc.course_id=c.id AND tc.term_id=? AND tc.deleted=0) ");args.add(termId); }
         if (deptId != null) {
             where.append(" AND c.dept_id = ? ");
             args.add(deptId);
@@ -127,7 +134,7 @@ public class BaseDataQueryService {
 
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(s);
-        pageArgs.add((p - 1) * s);
+        pageArgs.add((p - 1L) * s);
 
         return jdbc.queryForList("""
                 SELECT c.id AS id, c.course_code AS courseCode, c.name AS name,
@@ -140,12 +147,13 @@ public class BaseDataQueryService {
                   FROM course c
                   LEFT JOIN dept d  ON d.id = c.dept_id
                   LEFT JOIN major m ON m.id = c.major_id
-                """ + where + " ORDER BY c.course_code LIMIT ? OFFSET ?", pageArgs.toArray());
+                """ + where + " ORDER BY " + com.csms.common.api.QuerySort.order(sortBy,sortOrder,Map.of("courseCode","c.course_code","name","c.name","credit","c.credit","id","c.id"),"c.course_code") + ",c.id LIMIT ? OFFSET ?", pageArgs.toArray());
     }
 
-    public long courseCount(Long deptId, Long majorId, String courseType, String status, String keyword) {
+    public long courseCount(Long deptId, Long majorId, String courseType, String status, String keyword, Long termId) {
         StringBuilder where = new StringBuilder(" WHERE c.deleted = 0 ");
         List<Object> args = new ArrayList<>();
+        if(termId!=null) { where.append(" AND EXISTS(SELECT 1 FROM teaching_class tc WHERE tc.course_id=c.id AND tc.term_id=? AND tc.deleted=0) ");args.add(termId); }
         if (deptId != null) {
             where.append(" AND c.dept_id = ? ");
             args.add(deptId);

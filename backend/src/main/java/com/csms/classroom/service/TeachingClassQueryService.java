@@ -21,6 +21,12 @@ import java.util.Map;
 public class TeachingClassQueryService {
 
     private final JdbcTemplate jdbc;
+    private static final String CONFLICT_SQL="""
+        SELECT 1 FROM class_schedule a JOIN class_schedule b ON a.day_of_week=b.day_of_week
+        AND a.start_minute<b.end_minute AND b.start_minute<a.end_minute AND a.start_week<=b.end_week AND b.start_week<=a.end_week
+        JOIN enrollment e ON e.teaching_class_id=b.teaching_class_id AND e.student_id=? AND e.deleted=0 AND e.status IN ('ENROLLED','COMPLETED')
+        WHERE a.teaching_class_id=tc.id AND b.teaching_class_id<>tc.id AND e.term_id=tc.term_id
+        """;
 
     public TeachingClassQueryService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -56,7 +62,7 @@ public class TeachingClassQueryService {
 
     /** C-01 教学班列表（分页 + 筛选） */
     public PageResult<Map<String, Object>> query(Long termId, Long courseId, Long teacherId,
-                                                 String keyword, String status, Boolean onlyAvailable,
+                                                 String keyword, String status, Boolean onlyAvailable, Long deptId, Boolean hasConflict, String sortBy, String sortOrder,
                                                  Integer page, Integer size) {
         int p = (page == null || page < 1) ? 1 : page;
         int s = (size == null || size < 1) ? 20 : Math.min(size, 100);
@@ -93,6 +99,12 @@ public class TeachingClassQueryService {
             args.add(like);
         }
 
+        if(deptId!=null) { where.append(" AND c.dept_id=?");args.add(deptId); }
+        if(hasConflict!=null) {
+            var me=com.csms.common.service.CommandSupport.require("STUDENT");
+            where.append(hasConflict?" AND EXISTS ":" AND NOT EXISTS ").append("("+CONFLICT_SQL+")");args.add(me.getId());
+        }
+        String order=com.csms.common.api.QuerySort.order(sortBy,sortOrder,Map.of("id","tc.id","enrolled_count","tc.enrolled_count","enrolledCount","tc.enrolled_count","start_time","(SELECT MIN(s.start_minute) FROM class_schedule s WHERE s.teaching_class_id=tc.id)","className","tc.class_name"),"tc.id");
         Long total = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM teaching_class tc "
                         + "JOIN course c ON c.id = tc.course_id "
@@ -102,10 +114,10 @@ public class TeachingClassQueryService {
 
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(s);
-        pageArgs.add((p - 1) * s);
+        pageArgs.add((p - 1L) * s);
 
         List<Map<String, Object>> rows = jdbc.queryForList(
-                BASE_SELECT + where + " ORDER BY tc.id LIMIT ? OFFSET ?",
+                BASE_SELECT + where + " ORDER BY " + order + ",tc.id LIMIT ? OFFSET ?",
                 pageArgs.toArray());
         rows.forEach(this::attachSchedules);
 
