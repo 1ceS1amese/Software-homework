@@ -19,7 +19,7 @@
 | 层 | 设计选型 | 实际落地 |
 |---|---|---|
 | 前端 | Vue 3 + Vite + Vue Router + Pinia + Axios + Tailwind CSS | Vue **3.5.43**、Vite **8.3.2**、Vue Router **5.3.1**、Pinia **4.0.3**、Axios **1.20**、Tailwind CSS **4.3.3**、TS **6.0.3** |
-| UI 组件库 | 设计为 Nuxt UI（AS-03） | **Nuxt UI 4.11.3**，Vue 3 + Vite SPA 直接接入；旧版未路由页面仍保留 Element Plus 源码 |
+| UI 组件库 | 设计为 Nuxt UI（AS-03） | **Nuxt UI 4.11.3**，Vue 3 + Vite SPA 直接接入；已移除旧版未路由页面及 Element Plus 依赖 |
 | 图表 | ECharts | **未引入**，统计页以 Nuxt UI 表格与进度组件展示真实聚合数据 |
 | 后端 | Spring Boot 3.x + Spring Security + Validation | Spring Boot **3.2.5**、Java **17** |
 | 持久层 | MyBatis-Plus + Flyway | MyBatis-Plus **3.5.6**、Flyway（Boot BOM 管理） |

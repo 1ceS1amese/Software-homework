@@ -89,7 +89,7 @@
 | 数据库 | MySQL 8.0、InnoDB、utf8mb4；表结构与演示数据由 Flyway 管理 |
 | 验证 | JUnit、Vitest、Playwright；真实写入测试使用独立原生 MySQL |
 
-当前路由使用 Nuxt UI，未接入路由的旧版 Element Plus 源码仍保留。依赖以锁文件和实际构建解析为准。
+当前页面统一使用 Nuxt UI；未接入路由的旧版页面和 Element Plus 依赖已移除。依赖以锁文件和实际构建解析为准。
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
