@@ -43,6 +43,7 @@ export async function mockApi(page: Page) {
     else if (path === '/grades/my' || path.startsWith('/grades/class/')) data = []
     else if (path === '/stats/enrollment/overview') data = { termId: 1, classCount: 1, totalCapacity: 40, totalEnrollments: 1, studentCount: 3, avgFillRate: 2.5 }
     else if (path === '/stats/enrollment/by-course') data = [{ courseId: 1, courseName: '数据结构', capacity: 40, enrolledCount: 1, fillRate: 2.5 }]
+    else if (path === '/stats/grade-distribution') data = ['0-59', '60-69', '70-79', '80-89', '90-100'].map(bucket => ({ bucket, count: 0, n: 0 }))
     else if (path === '/stats/capacity-analysis') data = { fullClasses: [], idleClasses: [classroom], normalClasses: [] }
     else if (path.includes('/summary')) data = { studentId: 1, termId: 1, totalEnrolledCredits: 0, earnedCredits: 0, gpa: 0, courseCount: 0, passCount: 0, failCount: 0 }
     else if (path === '/users' || path === '/courses' || path === '/audit-logs' || path === '/login-logs') data = emptyPage

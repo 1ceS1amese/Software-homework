@@ -28,22 +28,26 @@
           <p v-if="!loading && !error && !group.rows.length" class="p-5 text-sm text-(--ui-text-muted)">暂无数据。</p>
         </div>
       </section>
-      <UAlert v-else color="info" variant="soft" icon="i-lucide-info" title="成绩分布暂不可用" description="后端目前只提供单个教学班的成绩分布接口，尚无全校汇总接口；此处不展示推测或样例数据。" />
+      <section v-else class="overflow-x-auto rounded-xl border border-(--ui-border) bg-(--ui-bg)">
+        <p class="border-b border-(--ui-border) p-4 text-sm">仅统计已发布成绩，共 {{ gradeDistribution[0]?.n ?? 0 }} 条。</p>
+        <UTable :data="gradeDistribution" :columns="gradeColumns" :loading="loading" />
+      </section>
     </div>
   </PageContainer>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { TableColumn } from '@nuxt/ui'
-import { getCapacityAnalysis, getEnrollmentOverview, getStatsByCourse } from '@/api/stats'
+import { getCapacityAnalysis, getEnrollmentOverview, getStatsByCourse, getGradeDistribution, type GradeBucket } from '@/api/stats'
 import { useTermStore } from '@/stores/term'
 import type { StatsOverview } from '@/api/types'
+import { csvCell } from '@/utils/rosterCsv'
 import PageContainer from '@/components/PageContainer.vue'
 
 type CourseStat = { courseId: number; courseName: string; capacity: number; enrolledCount: number; fillRate: number }
 type CapacityClass = { id: number; className: string; courseName: string; teacherName: string | null; capacity: number; enrolledCount: number }
-type CapacityResult = { fullClasses: CapacityClass[]; idleClasses: CapacityClass[]; normalClasses: CapacityClass[] }
+type CapacityResult = { fullClasses: CapacityClass[]; idleClasses: CapacityClass[]; normalClasses: CapacityClass[]; nearFullClasses?: CapacityClass[] }
 const tabs = [
   { label: '选课总览', value: 'overview' }, { label: '按课程统计', value: 'byCourse' },
   { label: '容量分析', value: 'capacity' }, { label: '成绩分布', value: 'gradeDist' },
@@ -56,6 +60,8 @@ const capacityColumns: TableColumn<CapacityClass>[] = [
   { accessorKey: 'className', header: '教学班' }, { accessorKey: 'courseName', header: '课程' },
   { accessorKey: 'teacherName', header: '教师' }, { id: 'seats', header: '已选 / 容量' },
 ]
+const gradeDistribution = ref<GradeBucket[]>([])
+const gradeColumns: TableColumn<GradeBucket>[] = [{ accessorKey: 'bucket', header: '分数段' }, { accessorKey: 'count', header: '人数' }]
 const termStore = useTermStore()
 const activeTab = ref('overview')
 const overview = ref<StatsOverview | null>(null)
@@ -74,36 +80,43 @@ const overviewCards = computed(() => [
 const capacityGroups = computed(() => [
   { key: 'fullClasses', label: '满员班级', rows: capacity.value.fullClasses },
   { key: 'idleClasses', label: '闲置班级（低于 30%）', rows: capacity.value.idleClasses },
-  { key: 'normalClasses', label: '其他班级', rows: capacity.value.normalClasses },
+  { key: 'normalClasses', label: '临界班级（30%–90%）', rows: capacity.value.normalClasses },
+  { key: 'nearFullClasses', label: '接近满员（超过 90%）', rows: capacity.value.nearFullClasses || [] },
 ])
 const hasExportData = computed(() => activeTab.value === 'overview' ? !!overview.value
   : activeTab.value === 'byCourse' ? courseStats.value.length > 0
-  : activeTab.value === 'capacity' ? capacityGroups.value.some(group => group.rows.length > 0) : false)
+  : activeTab.value === 'capacity' ? capacityGroups.value.some(group => group.rows.length > 0) : gradeDistribution.value.some(b => b.n > 0))
 
+let loadVersion = 0
 async function loadData() {
+  const version = ++loadVersion
   loading.value = true
   error.value = ''
   try {
     const termId = termStore.currentTermId ?? undefined
-    const [summary, courses, analysis] = await Promise.all([
-      getEnrollmentOverview(termId), getStatsByCourse({ termId, limit: 100 }), getCapacityAnalysis(termId),
+    const [summary, courses, analysis, distribution] = await Promise.all([
+      getEnrollmentOverview(termId), getStatsByCourse({ termId, limit: 100 }), getCapacityAnalysis(termId), getGradeDistribution(termId),
     ])
+    if (version !== loadVersion) return
+    gradeDistribution.value = distribution
     overview.value = summary
     courseStats.value = courses || []
     capacity.value = analysis as CapacityResult
   } catch {
+    if (version !== loadVersion) return
+    gradeDistribution.value = []
     overview.value = null
     courseStats.value = []
     capacity.value = { fullClasses: [], idleClasses: [], normalClasses: [] }
     error.value = '请检查网络或后端服务，然后重试。'
-  } finally { loading.value = false }
+  } finally { if (version === loadVersion) loading.value = false }
 }
-function csvCell(value: unknown) { return `"${String(value ?? '').replaceAll('"', '""')}"` }
 function exportCsv() {
   if (!hasExportData.value) return
   let rows: unknown[][] = []
   if (activeTab.value === 'overview') rows = [['指标', '数值'], ...overviewCards.value.map(card => [card.label, card.value])]
   else if (activeTab.value === 'byCourse') rows = [['课程', '容量', '选课人数', '满员率(%)'], ...courseStats.value.map(c => [c.courseName, c.capacity, c.enrolledCount, c.fillRate])]
+  else if (activeTab.value === 'gradeDist') rows = [['分数段', '人数', '总人数'], ...gradeDistribution.value.map(b => [b.bucket, b.count, b.n])]
   else rows = [['类别', '教学班', '课程', '教师', '已选', '容量'], ...capacityGroups.value.flatMap(g => g.rows.map(c => [g.label, c.className, c.courseName, c.teacherName, c.enrolledCount, c.capacity]))]
   const blob = new Blob(['\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -113,5 +126,6 @@ function exportCsv() {
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+watch(() => termStore.currentTermId, () => { void loadData() })
 onMounted(() => { void loadData() })
 </script>

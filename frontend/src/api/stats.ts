@@ -45,3 +45,8 @@ export function getStudentSummary(studentId: number, termId?: number) {
     params: { termId },
   })
 }
+
+export type GradeBucket = { bucket: string; count: number; n: number }
+export function getGradeDistribution(termId?: number) {
+  return request<GradeBucket[]>({ url: '/stats/grade-distribution', method: 'GET', params: { termId } })
+}

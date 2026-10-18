@@ -33,9 +33,19 @@ public class StatsController {
     /** S-02 按课程统计 */
     @GetMapping("/enrollment/by-course")
     public ApiResponse<List<Map<String, Object>>> byCourse(@RequestParam(required = false) Long termId,
+                                                           @RequestParam(required=false) Long deptId,
                                                            @RequestParam(required = false) Integer limit) {
         requireLogin();
-        return ApiResponse.success(statQueryService.byCourse(termId, limit));
+        return ApiResponse.success(statQueryService.byCourse(termId, deptId, limit));
+    }
+
+    @GetMapping("/enrollment/by-teacher")
+    public ApiResponse<?> byTeacher(@RequestParam(required=false) Long termId,@RequestParam(required=false) Long deptId) {
+        return ApiResponse.success(statQueryService.byTeacher(termId,deptId));
+    }
+    @GetMapping("/grade-distribution")
+    public ApiResponse<?> grades(@RequestParam(required=false) Long termId,@RequestParam(required=false) Long teachingClassId) {
+        return ApiResponse.success(statQueryService.gradeDistribution(termId,teachingClassId));
     }
 
     /** S-04 满员度分析 */
@@ -51,7 +61,7 @@ public class StatsController {
                                                            @RequestParam(required = false) Long termId) {
         CurrentUserHolder.UserContext me = requireLogin();
         boolean isAdmin = "ADMIN".equals(me.getRole());
-        boolean isSelf = me.getId().equals(studentId);
+        boolean isSelf = "STUDENT".equals(me.getRole()) && me.getId().equals(studentId);
         if (!isAdmin && !isSelf) {
             throw new BizException(ErrorCode.FORBIDDEN, "只能查看本人的学分统计");
         }

@@ -130,13 +130,15 @@ test('学生不能进入管理员页面', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /403/ })).toBeVisible()
 })
 
-test('统计页不显示虚构的全校成绩分布', async ({ page }) => {
+test('统计页按接口显示空成绩分布并禁止空导出', async ({ page }) => {
   await page.goto('/login')
   await page.getByRole('button', { name: '管理员' }).click()
   await page.getByRole('button', { name: '登录系统' }).click()
   await page.goto('/admin/stats')
   await page.getByRole('tab', { name: '成绩分布' }).click()
-  await expect(page.getByText('成绩分布暂不可用')).toBeVisible()
+  await expect(page.getByText('仅统计已发布成绩，共 0 条。')).toBeVisible()
+  await expect(page.getByRole('row').filter({ hasText: '90-100' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '导出当前报表' })).toBeDisabled()
 })
 
 test('课程接口失败时显示明确错误而非演示课程', async ({ page }) => {
