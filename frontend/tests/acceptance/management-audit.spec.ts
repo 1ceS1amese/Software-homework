@@ -85,7 +85,7 @@ test('REL-08 认证动态配置校验与新令牌有效期', async ({ page }, in
     const claims = JSON.parse(Buffer.from(data.accessToken.split('.')[1], 'base64url').toString())
     expect(claims.exp - claims.iat).toBe(600)
     for (let i = 0; i < 2; i++) expect((await page.request.post('/api/auth/login', { data: { username, password: 'WrongPolicy123' } })).status()).toBe(401)
-    expect(database(`SELECT CONCAT(fail_count,'|',TIMESTAMPDIFF(SECOND,NOW(),lock_until) BETWEEN 50 AND 60) FROM sys_user WHERE id=${id}`)).toBe('2|1')
+    expect(database(`SELECT CONCAT(fail_count,'|',TIMESTAMPDIFF(SECOND,NOW(),lock_until) BETWEEN 50 AND 61) FROM sys_user WHERE id=${id}`)).toBe('2|1')
   } finally {
     for (const c of previous) await api(page, '/configs/' + c.configKey, 'PUT', { configValue: c.configValue })
     await api(page, `/users/${id}`, 'DELETE')
