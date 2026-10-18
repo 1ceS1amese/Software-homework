@@ -43,6 +43,29 @@ def ready(url):
         return response.status == 200
 
 
+def run_tests(command, cwd, env):
+    # 独立进程组，确保暂停/取消时 Playwright、worker 和浏览器全部随本轮退出。
+    process = subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True)
+    try:
+        return process.wait()
+    finally:
+        # pnpm 可能先于 worker 退出；无论父进程是否结束，都清理它创建的进程组。
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        if process.poll() is None:
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait()
+
+
+def stop_signal(_signum, _frame):
+    raise KeyboardInterrupt
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--serve', action='store_true', help='保留隔离服务，供逐功能复验；Ctrl+C 停止')
@@ -50,6 +73,7 @@ def main():
     parser.add_argument('--current', action='store_true', help='在本工具已启动的隔离会话中执行指定测试')
     parser.add_argument('playwright_args', nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    signal.signal(signal.SIGTERM, stop_signal)
     for tool in ('mysql', 'mysqld', 'java', 'pnpm'):
         if not shutil.which(tool):
             raise SystemExit('请先 source scripts/env.sh 并准备原生工具')
@@ -61,9 +85,11 @@ def main():
         env = os.environ.copy()
         env.update(state['env'])
         extra = args.playwright_args[1:] if args.playwright_args[:1] == ['--'] else args.playwright_args
-        return subprocess.run(['pnpm', 'exec', 'playwright', 'test', '--config',
-                               'playwright.acceptance.config.ts', *extra],
-                              cwd=PROJECT / 'frontend', env=env).returncode
+        try:
+            return run_tests(['pnpm', 'exec', 'playwright', 'test', '--config',
+                              'playwright.acceptance.config.ts', *extra], PROJECT / 'frontend', env)
+        except KeyboardInterrupt:
+            return 130
     directory = PROJECT / '.local/acceptance'
     directory.mkdir(parents=True, exist_ok=True)
     run = Path(tempfile.mkdtemp(prefix='run-', dir=directory))
@@ -100,10 +126,6 @@ def main():
                                '--batch', '--skip-column-names'], input=text, env=env,
                               text=True, capture_output=True, check=True).stdout
 
-    def stop_signal(_signum, _frame):
-        raise KeyboardInterrupt
-
-    signal.signal(signal.SIGTERM, stop_signal)
     try:
         if not args.skip_build:
             with (run / 'build.log').open('w') as log:
@@ -157,12 +179,10 @@ def main():
             extra = args.playwright_args
             if extra[:1] == ['--']:
                 extra = extra[1:]
-            result = subprocess.run(['pnpm', 'exec', 'playwright', 'test', '--config',
-                                     'playwright.acceptance.config.ts', *extra],
-                                    cwd=PROJECT / 'frontend', env=env)
-            return result.returncode
+            return run_tests(['pnpm', 'exec', 'playwright', 'test', '--config',
+                              'playwright.acceptance.config.ts', *extra], PROJECT / 'frontend', env)
     except KeyboardInterrupt:
-        return 0
+        return 0 if args.serve else 130
     finally:
         for child in reversed(children):
             if child.poll() is None:
