@@ -29,25 +29,23 @@ public class JwtFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            if (jwtService.validateToken(token) && access.permits(jwtService.getId(token), jwtService.getUsername(token), jwtService.getRole(token), jwtService.getVersion(token))) {
-                Long id = jwtService.getId(token);
-                String username = jwtService.getUsername(token);
-                String role = jwtService.getRole(token);
-                Long deptId = jwtService.getDeptId(token);
-
-                AuthPrincipal principal = new AuthPrincipal(id, username, null, role, deptId);
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        principal, null, principal.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                
-                CurrentUserHolder.UserContext userContext = new CurrentUserHolder.UserContext(id, username, role, deptId);
-                CurrentUserHolder.set(userContext);
-            }
+            try {
+                var claims=jwtService.getClaims(authHeader.substring(7));
+                Long id=claims.get("id",Long.class),deptId=claims.get("deptId",Long.class);
+                String username=claims.get("username",String.class),role=claims.get("role",String.class);
+                if(username==null) username=claims.getSubject();
+                Integer version=claims.get("ver",Integer.class);
+                if(access.permits(id,username,role,version==null?0:version)) {
+                    var principal=new AuthPrincipal(id,username,null,role,deptId);
+                    var authentication=new UsernamePasswordAuthenticationToken(principal,null,principal.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    CurrentUserHolder.set(new CurrentUserHolder.UserContext(id,username,role,deptId));
+                }
+            } catch(io.jsonwebtoken.ExpiredJwtException e) { request.setAttribute("csms.expired",true); }
+              catch(io.jsonwebtoken.JwtException|IllegalArgumentException e) { /* invalid token becomes 401 */ }
         }
-        
+
         try {
             filterChain.doFilter(request, response);
         } finally {

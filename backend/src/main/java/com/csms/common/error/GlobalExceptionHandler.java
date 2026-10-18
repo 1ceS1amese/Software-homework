@@ -28,6 +28,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.error(ErrorCode.PARAM_ERROR.getCode(), msg));
     }
 
+    @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
+        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+        org.springframework.web.bind.MissingServletRequestParameterException.class})
+    public ResponseEntity<ApiResponse<?>> handleBadRequest(Exception e) {
+        return ResponseEntity.badRequest().body(ApiResponse.error(10000,"请求格式或参数类型无效"));
+    }
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<?>> handleMissing(Exception e) {
+        return ResponseEntity.status(404).body(ApiResponse.error(10003,"接口不存在"));
+    }
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<?>> handleMethod(Exception e) {
+        return ResponseEntity.status(405).body(ApiResponse.error(10000,"接口不支持此请求方法"));
+    }
+    @ExceptionHandler(org.springframework.dao.PessimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<?>> handleBusy(Exception e) {
+        return ResponseEntity.status(503).body(ApiResponse.error(10005,"系统繁忙，请稍后重试"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleException(Exception e) {
         String traceId = MDC.get("traceId");

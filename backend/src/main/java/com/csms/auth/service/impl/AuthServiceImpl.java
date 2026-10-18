@@ -80,7 +80,7 @@ public class AuthServiceImpl implements AuthService {
 
         loginRecord(username,user,"SUCCESS");
         String role = user.getUserType() == null ? null : user.getUserType().name();
-        return jwtService.generateToken(user.getId(), user.getUsername(), role, user.getDeptId(), user.getVersion()==null?0:user.getVersion());
+        return jwtService.generateToken(user.getId(), user.getUsername(), role, user.getDeptId(), user.getMajorId(), user.getVersion()==null?0:user.getVersion());
     }
 
     private void loginRecord(String username,User user,String result) {
@@ -118,7 +118,11 @@ public class AuthServiceImpl implements AuthService {
         if (ctx == null) {
             throw new BizException(ErrorCode.AUTH_INVALID_TOKEN);
         }
-        User user = userMapper.selectById(ctx.getId());
+        return profile(ctx.getId());
+    }
+
+    private Map<String,Object> profile(Long id) {
+        User user = userMapper.selectById(id);
         if (user == null) {
             throw new BizException(ErrorCode.AUTH_INVALID_TOKEN);
         }
@@ -128,6 +132,9 @@ public class AuthServiceImpl implements AuthService {
         profile.put("username", user.getUsername());
         profile.put("realName", user.getRealName());
         profile.put("userType", user.getUserType() == null ? null : user.getUserType().name());
+        profile.put("role", user.getUserType()==null?null:user.getUserType().name());
+        profile.put("deptName", user.getDeptId()==null?null:jdbc.queryForObject("SELECT name FROM dept WHERE id=?",String.class,user.getDeptId()));
+        profile.put("majorName", user.getMajorId()==null?null:jdbc.queryForObject("SELECT name FROM major WHERE id=?",String.class,user.getMajorId()));
         profile.put("deptId", user.getDeptId());
         profile.put("majorId", user.getMajorId());
         profile.put("gender", user.getGender() == null ? null : user.getGender().name());
@@ -137,6 +144,10 @@ public class AuthServiceImpl implements AuthService {
         profile.put("mustChangePwd", Boolean.TRUE.equals(user.getMustChangePwd()));
         profile.put("permissions", permissionsOf(user));
         return profile;
+    }
+
+    @Override public Map<String,Object> tokenResponse(String token) {
+        return Map.of("accessToken",token,"tokenType","Bearer","expiresIn",jwtService.expirationSeconds(),"user",profile(jwtService.getId(token)));
     }
 
     /** 按角色下发按钮级权限码（对应 docs/04 §9） */

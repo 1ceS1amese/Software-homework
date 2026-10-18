@@ -52,6 +52,26 @@ server {
         default_type application/x-x509-ca-cert;
     }
 
+    location = /api/v1/auth/login {
+        limit_req zone=csms_login burst=10 nodelay;
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:__BACKEND_PORT__/api/v1/auth/login;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location /api/v1/ {
+        proxy_pass http://127.0.0.1:__BACKEND_PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
     location = /api/auth/login {
         limit_req zone=csms_login burst=10 nodelay;
         limit_req_status 429;

@@ -29,6 +29,12 @@ public class JwtService {
     }
 
     public String generateToken(Long id, String username, String role, Long deptId, int version) {
+        return generateToken(id,username,role,deptId,null,version);
+    }
+
+    public long expirationSeconds() { return expiration/1000; }
+
+    public String generateToken(Long id,String username,String role,Long deptId,Long majorId,int version) {
         return Jwts.builder()
                 .subject(id.toString())
                 .id(java.util.UUID.randomUUID().toString())
@@ -37,6 +43,7 @@ public class JwtService {
                 .claim("ver", version)
                 .claim("role", role)
                 .claim("deptId", deptId)
+                .claim("majorId",majorId)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey())

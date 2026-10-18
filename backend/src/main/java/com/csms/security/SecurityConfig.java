@@ -51,14 +51,15 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/actuator/health").permitAll()
+                        .requestMatchers("/auth/login", "/actuator/health", "/api/v1/auth/login", "/api/v1/actuator/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setContentType("application/json;charset=UTF-8");
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            var result = ApiResponse.error(ErrorCode.AUTH_INVALID_TOKEN.getCode(), "请先登录或重新登录");
+                            var code=Boolean.TRUE.equals(request.getAttribute("csms.expired"))?ErrorCode.AUTH_EXPIRED:ErrorCode.AUTH_INVALID_TOKEN;
+                            var result = ApiResponse.error(code.getCode(), code.getMessage());
                             response.getWriter().write(objectMapper.writeValueAsString(result));
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {

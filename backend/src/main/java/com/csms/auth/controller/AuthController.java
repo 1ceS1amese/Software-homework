@@ -28,8 +28,9 @@ public class AuthController {
 
     /** A-01 登录 */
     @PostMapping("/login")
-    public ApiResponse<String> login(@Valid @RequestBody LoginRequest request) {
-        return ApiResponse.success(authService.login(request.getUsername(), request.getPassword()));
+    public ApiResponse<?> login(@Valid @RequestBody LoginRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        String token=authService.login(request.getUsername(),request.getPassword());
+        return ApiResponse.success(http.getRequestURI().startsWith("/api/v1/")?authService.tokenResponse(token):token);
     }
 
     /** A-02 登出（无状态，前端清除 Token） */

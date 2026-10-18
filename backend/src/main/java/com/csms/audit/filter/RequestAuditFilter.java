@@ -18,7 +18,7 @@ public class RequestAuditFilter extends OncePerRequestFilter {
     private final AuditWriter audit;
     public RequestAuditFilter(AuditWriter audit) { this.audit=audit; }
     @Override protected boolean shouldNotFilter(HttpServletRequest request) {
-        return "OPTIONS".equals(request.getMethod()) || "/actuator/health".equals(request.getRequestURI());
+        return "OPTIONS".equals(request.getMethod()) || "/actuator/health".equals(request.getRequestURI()) || "/api/v1/actuator/health".equals(request.getRequestURI());
     }
     @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain)
             throws ServletException,IOException {
