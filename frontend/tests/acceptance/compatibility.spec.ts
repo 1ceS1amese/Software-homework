@@ -31,6 +31,11 @@ for (const width of [390, 768, 1440]) {
     expect(database(`SELECT name FROM course WHERE course_code='${code}'`)).toBe('跨屏验收课程')
     const id = Number(database(`SELECT id FROM course WHERE course_code='${code}'`))
     expect((await api(page, `/courses/${id}`, 'DELETE')).body.code).toBe(0)
+    for (const route of ['/admin/depts', '/admin/terms', '/admin/users', '/admin/teaching-classes', '/admin/grades', '/admin/audit-logs', '/admin/login-logs', '/admin/configs', '/admin/stats']) {
+      await page.goto(route)
+      await expect(page.locator('main').getByRole('heading').first()).toBeVisible()
+      await fits()
+    }
     await page.evaluate(() => localStorage.clear())
     await login(page, 'teacher1')
     await page.goto('/teacher/classes')

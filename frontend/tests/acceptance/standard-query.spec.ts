@@ -14,7 +14,7 @@ test('REL-09B 基础数据与教学班筛选、白名单排序、分页和有效
   expect(tree.body.data.every((d: any) => d.status === 'ACTIVE' && d.children.every((m: any) => m.deptId === d.id))).toBe(true)
   expect((await get('/majors?deptId=999999')).body.data).toEqual([])
   expect((await get('/majors?status=INACTIVE')).body.data).toEqual([])
-  const courses = (await get('/courses?termId=9001&size=999&sortBy=credit&sortOrder=desc')).body.data
+  const courses = (await get('/courses?termId=9001&keyword=ACCEPT-&size=999&sortBy=credit&sortOrder=desc')).body.data
   expect(courses.size).toBe(100)
   expect(courses.total).toBe(3)
   expect(courses.records.map((c: any) => Number(c.credit))).toEqual([3, 2, 1])
